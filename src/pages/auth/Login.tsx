@@ -2,6 +2,22 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
+// Temporary user database (replace with real authentication later)
+const users = {
+  'at3bk-m@outlook.com': {
+    password: '12312311',
+    role: 'ADMIN'
+  },
+  'filmmaker@test.com': {
+    password: 'filmmaker123',
+    role: 'FILMMAKER'
+  },
+  'viewer@test.com': {
+    password: 'viewer123',
+    role: 'VIEWER'
+  }
+};
+
 export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -12,16 +28,12 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Temporary test login
-      if (formData.email && formData.password) {
+      const user = users[formData.email as keyof typeof users];
+      
+      if (user && user.password === formData.password) {
         toast.success('Login successful!');
-        // Simulate different user roles for testing
-        const role = formData.email.includes('admin') ? 'ADMIN' 
-          : formData.email.includes('filmmaker') ? 'FILMMAKER'
-          : 'VIEWER';
-          
         // Navigate based on role
-        switch(role) {
+        switch(user.role) {
           case 'ADMIN':
             navigate('/moderation');
             break;
@@ -31,6 +43,8 @@ export default function Login() {
           default:
             navigate('/browse');
         }
+      } else {
+        toast.error('Invalid email or password');
       }
     } catch (error) {
       toast.error('Login failed');
@@ -45,7 +59,7 @@ export default function Login() {
             Sign in to Filmila
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Test accounts: admin@test.com, filmmaker@test.com, viewer@test.com
+            Admin account: at3bk-m@outlook.com
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
