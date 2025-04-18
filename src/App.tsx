@@ -2,7 +2,7 @@ import React from 'react'
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
-function App() {
+const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
@@ -22,7 +22,7 @@ function App() {
           </nav>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Routes>
             <Route path="/login" element={
               <div className="max-w-md mx-auto">
@@ -88,8 +88,8 @@ function App() {
             } />
           </Routes>
         </main>
+        <Toaster position="top-right" />
       </div>
-      <Toaster position="top-right" />
     </Router>
   )
 }
