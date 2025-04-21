@@ -283,7 +283,7 @@ const FilmsManagement: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string, rejectionNote?: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
         return (
@@ -523,12 +523,7 @@ const FilmsManagement: React.FC = () => {
                     <div className="text-sm text-gray-500">{film.uploadDate}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(film.status, film.rejectionNote)}
-                    {film.rejectionNote && (
-                      <div className="mt-1 text-xs text-red-600">
-                        {film.rejectionNote}
-                      </div>
-                    )}
+                    {getStatusBadge(film.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {film.lastAction && (
