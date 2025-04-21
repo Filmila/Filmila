@@ -34,7 +34,7 @@ const UploadFilm = () => {
       // const response = await api.post('/films', formData);
       
       // Navigate to the filmmaker dashboard after successful upload
-      navigate('/dashboard');
+      navigate('/filmmaker/dashboard');
     } catch (err) {
       setError('Failed to upload film. Please try again.');
     } finally {
