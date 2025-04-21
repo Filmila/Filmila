@@ -1,6 +1,7 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import Login from './pages/auth/Login'
 
 const App: React.FC = () => {
   return (
@@ -24,35 +25,23 @@ const App: React.FC = () => {
 
         <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Routes>
-            <Route path="/login" element={
-              <div className="max-w-md mx-auto">
-                <h1 className="text-2xl font-bold text-center mb-8">Sign in to your account</h1>
-                <div className="bg-white shadow rounded-lg p-6">
-                  <form className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Email</label>
-                      <input
-                        type="email"
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        placeholder="Enter your email"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Password</label>
-                      <input
-                        type="password"
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        placeholder="Enter your password"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
-                    >
-                      Sign In
-                    </button>
-                  </form>
-                </div>
+            <Route path="/login" element={<Login />} />
+            <Route path="/moderation" element={
+              <div className="bg-white shadow rounded-lg p-6">
+                <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+                <p className="text-gray-600">Welcome to the moderation panel</p>
+              </div>
+            } />
+            <Route path="/dashboard" element={
+              <div className="bg-white shadow rounded-lg p-6">
+                <h1 className="text-2xl font-bold mb-4">Filmmaker Dashboard</h1>
+                <p className="text-gray-600">Welcome to your filmmaker dashboard</p>
+              </div>
+            } />
+            <Route path="/browse" element={
+              <div className="bg-white shadow rounded-lg p-6">
+                <h1 className="text-2xl font-bold mb-4">Browse Films</h1>
+                <p className="text-gray-600">Discover amazing short films</p>
               </div>
             } />
             <Route path="/" element={
@@ -64,7 +53,6 @@ const App: React.FC = () => {
                   Your platform for discovering and sharing amazing short films
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Feature cards will go here */}
                   <div className="bg-white p-6 rounded-lg shadow-md">
                     <h3 className="text-lg font-semibold mb-2">Watch</h3>
                     <p className="text-gray-600">
@@ -86,6 +74,7 @@ const App: React.FC = () => {
                 </div>
               </div>
             } />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
         <Toaster position="top-right" />
