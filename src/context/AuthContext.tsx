@@ -21,39 +21,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for stored user data on initial load
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log('Restored user from localStorage:', parsedUser);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('user');
+      }
     }
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Temporary user database (replace with real authentication later)
-    const users = {
-      'at3bk-m@outlook.com': {
-        password: '12312311',
-        role: 'ADMIN' as const
-      },
-      'filmmaker@test.com': {
-        password: 'filmmaker123',
-        role: 'FILMMAKER' as const
-      },
-      'viewer@test.com': {
-        password: 'viewer123',
-        role: 'VIEWER' as const
-      }
-    };
+    try {
+      // Temporary user database (replace with real authentication later)
+      const users = {
+        'at3bk-m@outlook.com': {
+          password: '12312311',
+          role: 'ADMIN' as const
+        },
+        'filmmaker@test.com': {
+          password: 'filmmaker123',
+          role: 'FILMMAKER' as const
+        },
+        'viewer@test.com': {
+          password: 'viewer123',
+          role: 'VIEWER' as const
+        }
+      };
 
-    const userData = users[email as keyof typeof users];
-    
-    if (userData && userData.password === password) {
-      const user = { email, role: userData.role };
-      setUser(user);
-      localStorage.setItem('user', JSON.stringify(user));
-      return true;
+      const userData = users[email as keyof typeof users];
+      
+      if (userData && userData.password === password) {
+        const user = { email, role: userData.role };
+        console.log('Setting user:', user);
+        setUser(user);
+        localStorage.setItem('user', JSON.stringify(user));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
+    console.log('Logging out user');
     setUser(null);
     localStorage.removeItem('user');
   };

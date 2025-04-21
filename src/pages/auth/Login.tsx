@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 // Temporary user database (replace with real authentication later)
 const users = {
@@ -20,6 +21,7 @@ const users = {
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -28,26 +30,32 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const user = users[formData.email as keyof typeof users];
+      console.log('Attempting login with:', formData.email);
+      const success = await login(formData.email, formData.password);
       
-      if (user && user.password === formData.password) {
+      if (success) {
+        console.log('Login successful, redirecting...');
         toast.success('Login successful!');
+        
+        // Get user data from localStorage
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('User data:', userData);
+
         // Navigate based on role
-        switch(user.role) {
-          case 'ADMIN':
-            navigate('/moderation');
-            break;
-          case 'FILMMAKER':
-            navigate('/dashboard');
-            break;
-          default:
-            navigate('/browse');
+        if (userData.role === 'ADMIN') {
+          navigate('/moderation');
+        } else if (userData.role === 'FILMMAKER') {
+          navigate('/dashboard');
+        } else {
+          navigate('/browse');
         }
       } else {
+        console.log('Login failed: Invalid credentials');
         toast.error('Invalid email or password');
       }
     } catch (error) {
-      toast.error('Login failed');
+      console.error('Login error:', error);
+      toast.error('Login failed. Please try again.');
     }
   };
 
