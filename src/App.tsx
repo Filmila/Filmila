@@ -14,11 +14,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'ADMI
   const { isAuthenticated, user } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
@@ -69,6 +69,16 @@ const App: React.FC = () => {
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminLayout>
                     <UserManagement />
+                  </AdminLayout>
+                </ProtectedRoute>
+              } />
+              <Route path="/moderation/settings" element={
+                <ProtectedRoute requiredRole="ADMIN">
+                  <AdminLayout>
+                    <div className="bg-white shadow rounded-lg p-6">
+                      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+                      <p className="text-gray-600">Manage your account settings</p>
+                    </div>
                   </AdminLayout>
                 </ProtectedRoute>
               } />
