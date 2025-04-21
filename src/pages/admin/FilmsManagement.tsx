@@ -205,20 +205,21 @@ const FilmsManagement: React.FC = () => {
   const confirmBulkAction = () => {
     if (confirmAction === 'approve') {
       const now = new Date().toISOString();
-      setFilms(films.map(f => 
+      const updatedFilms: Film[] = films.map(f => 
         selectedFilms.has(f.id) 
           ? { 
               ...f, 
-              status: 'approved', 
+              status: 'approved' as const, 
               rejectionNote: undefined,
               lastAction: {
-                type: 'approve',
+                type: 'approve' as const,
                 admin: currentAdmin,
                 date: now
               }
             } 
           : f
-      ));
+      );
+      setFilms(updatedFilms);
     } else if (confirmAction === 'reject') {
       setSelectedFilm(films.find(f => f.id === Array.from(selectedFilms)[0]) || null);
       setIsRejectModalOpen(true);
@@ -248,10 +249,10 @@ const FilmsManagement: React.FC = () => {
       f.id === film.id 
         ? { 
             ...f, 
-            status: 'approved', 
+            status: 'approved' as const, 
             rejectionNote: undefined,
             lastAction: {
-              type: 'approve',
+              type: 'approve' as const,
               admin: currentAdmin,
               date: now
             }
@@ -268,14 +269,14 @@ const FilmsManagement: React.FC = () => {
   const handleSaveRejection = () => {
     if (selectedFilm) {
       const now = new Date().toISOString();
-      const updatedFilms = films.map(f => {
+      const updatedFilms: Film[] = films.map(f => {
         if (selectedFilms.has(f.id) || f.id === selectedFilm.id) {
           return {
             ...f,
-            status: 'rejected',
+            status: 'rejected' as const,
             rejectionNote,
             lastAction: {
-              type: 'reject',
+              type: 'reject' as const,
               admin: currentAdmin,
               date: now
             }
