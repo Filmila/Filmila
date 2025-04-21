@@ -27,14 +27,29 @@ const UploadFilm = () => {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Create a new film object with all required fields
+      const newFilm: Film = {
+        id: Date.now().toString(), // Temporary ID
+        title: formData.title || '',
+        filmmaker: 'Current User', // This should come from auth context
+        description: formData.description || '',
+        price: formData.price || 0,
+        views: 0,
+        revenue: 0,
+        status: 'pending',
+        uploadDate: new Date().toISOString(),
+        videoUrl: formData.videoUrl || '',
+      };
+
       // In a real app, you would make an API call here
-      // const response = await api.post('/films', formData);
+      // const response = await api.post('/films', newFilm);
       
-      // Navigate to the filmmaker dashboard after successful upload
-      navigate('/filmmaker/dashboard');
+      // For now, we'll store the film in localStorage
+      const existingFilms = JSON.parse(localStorage.getItem('films') || '[]');
+      localStorage.setItem('films', JSON.stringify([...existingFilms, newFilm]));
+      
+      // Navigate to the filmmaker dashboard with the new film data
+      navigate('/filmmaker/dashboard', { state: { newFilm } });
     } catch (err) {
       setError('Failed to upload film. Please try again.');
     } finally {
