@@ -3,22 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
-// Temporary user database (replace with real authentication later)
-const users = {
-  'at3bk-m@outlook.com': {
-    password: '12312311',
-    role: 'ADMIN'
-  },
-  'filmmaker@test.com': {
-    password: 'filmmaker123',
-    role: 'FILMMAKER'
-  },
-  'viewer@test.com': {
-    password: 'viewer123',
-    role: 'VIEWER'
-  }
-};
-
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
