@@ -1,13 +1,15 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
   FilmIcon, 
   UsersIcon, 
   CurrencyDollarIcon, 
   ShieldCheckIcon, 
   ChartBarIcon, 
-  CogIcon 
+  CogIcon,
+  ArrowRightOnRectangleIcon 
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../../context/AuthContext';
 
 interface AdminLayoutProps {
   children?: React.ReactNode;
@@ -24,6 +26,13 @@ const navigation = [
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout, isAuthenticated } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -72,6 +81,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
       {/* Main content */}
       <div className="pl-64">
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex justify-end">
+              {isAuthenticated && (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <ArrowRightOnRectangleIcon className="w-5 h-5 mr-2" />
+                  Logout
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
         <main className="py-6">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             {children || <Outlet />}
