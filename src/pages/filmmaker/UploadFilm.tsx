@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Film } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { uploadFileToS3 } from '../../services/s3Service';
 
 const UploadFilm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<Film>>({
     title: '',
     description: '',
     price: 0,
-    videoUrl: '',
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +26,44 @@ const UploadFilm = () => {
     }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('video/')) {
+        setError('Please upload a valid video file');
+        return;
+      }
+      // Validate file size (e.g., 500MB limit)
+      if (file.size > 500 * 1024 * 1024) {
+        setError('File size should be less than 500MB');
+        return;
+      }
+      setSelectedFile(file);
+      setError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedFile) {
+      setError('Please select a video file');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
+      // Generate a unique key for the file
+      const fileKey = `films/${user?.email}/${Date.now()}-${selectedFile.name}`;
+      
+      // Upload file to S3
+      const videoUrl = await uploadFileToS3(selectedFile, fileKey);
+      
       // Create a new film object with all required fields
       const newFilm: Film = {
-        id: Date.now().toString(), // Temporary ID
+        id: Date.now().toString(),
         title: formData.title || '',
         filmmaker: user?.email || 'Unknown Filmmaker',
         description: formData.description || '',
@@ -40,13 +72,10 @@ const UploadFilm = () => {
         revenue: 0,
         status: 'pending',
         uploadDate: new Date().toISOString(),
-        videoUrl: formData.videoUrl || '',
+        videoUrl,
       };
 
-      // In a real app, you would make an API call here
-      // const response = await api.post('/films', newFilm);
-      
-      // For now, we'll store the film in localStorage
+      // Store film data in localStorage
       const existingFilms = JSON.parse(localStorage.getItem('films') || '[]');
       localStorage.setItem('films', JSON.stringify([...existingFilms, newFilm]));
       
@@ -54,6 +83,7 @@ const UploadFilm = () => {
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to upload film. Please try again.');
+      console.error('Upload error:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,18 +142,28 @@ const UploadFilm = () => {
         </div>
 
         <div>
-          <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700">
-            Video URL
+          <label htmlFor="video" className="block text-sm font-medium text-gray-700">
+            Video File
           </label>
           <input
-            type="url"
-            id="videoUrl"
-            name="videoUrl"
-            value={formData.videoUrl}
-            onChange={handleChange}
+            type="file"
+            id="video"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="video/*"
             required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            className="mt-1 block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-md file:border-0
+              file:text-sm file:font-semibold
+              file:bg-indigo-50 file:text-indigo-700
+              hover:file:bg-indigo-100"
           />
+          {selectedFile && (
+            <p className="mt-2 text-sm text-gray-500">
+              Selected file: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+            </p>
+          )}
         </div>
 
         {error && (
