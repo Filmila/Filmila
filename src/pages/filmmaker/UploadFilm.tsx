@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Film } from '../../types';
+import { useAuth } from '../../context/AuthContext';
 
 const UploadFilm = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Film>>({
     title: '',
     description: '',
@@ -31,7 +33,7 @@ const UploadFilm = () => {
       const newFilm: Film = {
         id: Date.now().toString(), // Temporary ID
         title: formData.title || '',
-        filmmaker: 'Current User', // This should come from auth context
+        filmmaker: user?.email || 'Unknown Filmmaker',
         description: formData.description || '',
         price: formData.price || 0,
         views: 0,
@@ -48,8 +50,8 @@ const UploadFilm = () => {
       const existingFilms = JSON.parse(localStorage.getItem('films') || '[]');
       localStorage.setItem('films', JSON.stringify([...existingFilms, newFilm]));
       
-      // Navigate to the filmmaker dashboard with the new film data
-      navigate('/filmmaker/dashboard', { state: { newFilm } });
+      // Navigate to the dashboard
+      navigate('/dashboard');
     } catch (err) {
       setError('Failed to upload film. Please try again.');
     } finally {
