@@ -10,6 +10,49 @@ import {
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const [settings, setSettings] = useState({
+    general: {
+      platformName: 'Filmila',
+      platformDescription: 'Your platform for discovering and sharing amazing short films',
+    },
+    notifications: {
+      emailNotifications: true,
+      pushNotifications: true,
+    },
+    security: {
+      twoFactorAuth: false,
+      sessionTimeout: '30',
+    },
+    billing: {
+      paymentMethod: 'credit_card',
+      billingCycle: 'monthly',
+    },
+    users: {
+      registrationType: 'open',
+      defaultRole: 'viewer',
+    },
+    regional: {
+      defaultLanguage: 'en',
+      timeZone: 'UTC',
+    },
+  });
+
+  const handleInputChange = (section: string, field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section as keyof typeof prev],
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSave = (section: string) => {
+    // Here you would typically make an API call to save the settings
+    console.log(`Saving ${section} settings:`, settings[section as keyof typeof settings]);
+    // For now, we'll just show a success message
+    alert(`${section.charAt(0).toUpperCase() + section.slice(1)} settings saved successfully!`);
+  };
 
   const tabs = [
     { id: 'general', name: 'General', icon: Cog6ToothIcon },
@@ -60,18 +103,28 @@ const Settings: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700">Platform Name</label>
                   <input
                     type="text"
+                    value={settings.general.platformName}
+                    onChange={(e) => handleInputChange('general', 'platformName', e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    defaultValue="Filmila"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Platform Description</label>
                   <textarea
                     rows={3}
+                    value={settings.general.platformDescription}
+                    onChange={(e) => handleInputChange('general', 'platformDescription', e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                    defaultValue="Your platform for discovering and sharing amazing short films"
                   />
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('general')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
@@ -86,8 +139,9 @@ const Settings: React.FC = () => {
                 <div className="flex items-center">
                   <input
                     type="checkbox"
+                    checked={settings.notifications.emailNotifications}
+                    onChange={(e) => handleInputChange('notifications', 'emailNotifications', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    defaultChecked
                   />
                   <label className="ml-3 text-sm font-medium text-gray-700">
                     Email notifications
@@ -96,13 +150,22 @@ const Settings: React.FC = () => {
                 <div className="flex items-center">
                   <input
                     type="checkbox"
+                    checked={settings.notifications.pushNotifications}
+                    onChange={(e) => handleInputChange('notifications', 'pushNotifications', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    defaultChecked
                   />
                   <label className="ml-3 text-sm font-medium text-gray-700">
                     Push notifications
                   </label>
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('notifications')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
@@ -116,20 +179,36 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Two-Factor Authentication</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>Enabled</option>
-                    <option>Disabled</option>
+                  <select
+                    value={settings.security.twoFactorAuth ? 'enabled' : 'disabled'}
+                    onChange={(e) => handleInputChange('security', 'twoFactorAuth', e.target.value === 'enabled')}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="enabled">Enabled</option>
+                    <option value="disabled">Disabled</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Session Timeout</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>15 minutes</option>
-                    <option>30 minutes</option>
-                    <option>1 hour</option>
-                    <option>2 hours</option>
+                  <select
+                    value={settings.security.sessionTimeout}
+                    onChange={(e) => handleInputChange('security', 'sessionTimeout', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="15">15 minutes</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="120">2 hours</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('security')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
@@ -143,20 +222,36 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>Credit Card</option>
-                    <option>PayPal</option>
-                    <option>Bank Transfer</option>
+                  <select
+                    value={settings.billing.paymentMethod}
+                    onChange={(e) => handleInputChange('billing', 'paymentMethod', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="credit_card">Credit Card</option>
+                    <option value="paypal">PayPal</option>
+                    <option value="bank_transfer">Bank Transfer</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Billing Cycle</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>Monthly</option>
-                    <option>Quarterly</option>
-                    <option>Annually</option>
+                  <select
+                    value={settings.billing.billingCycle}
+                    onChange={(e) => handleInputChange('billing', 'billingCycle', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="annually">Annually</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('billing')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
@@ -170,19 +265,35 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">User Registration</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>Open</option>
-                    <option>Invite Only</option>
-                    <option>Admin Approval Required</option>
+                  <select
+                    value={settings.users.registrationType}
+                    onChange={(e) => handleInputChange('users', 'registrationType', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="open">Open</option>
+                    <option value="invite_only">Invite Only</option>
+                    <option value="admin_approval">Admin Approval Required</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Default User Role</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>Viewer</option>
-                    <option>Filmmaker</option>
+                  <select
+                    value={settings.users.defaultRole}
+                    onChange={(e) => handleInputChange('users', 'defaultRole', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="filmmaker">Filmmaker</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('users')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
@@ -196,22 +307,38 @@ const Settings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Default Language</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>English</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
+                  <select
+                    value={settings.regional.defaultLanguage}
+                    onChange={(e) => handleInputChange('regional', 'defaultLanguage', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Time Zone</label>
-                  <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <option>UTC</option>
-                    <option>EST</option>
-                    <option>PST</option>
-                    <option>CET</option>
+                  <select
+                    value={settings.regional.timeZone}
+                    onChange={(e) => handleInputChange('regional', 'timeZone', e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  >
+                    <option value="UTC">UTC</option>
+                    <option value="EST">EST</option>
+                    <option value="PST">PST</option>
+                    <option value="CET">CET</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleSave('regional')}
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           )}
