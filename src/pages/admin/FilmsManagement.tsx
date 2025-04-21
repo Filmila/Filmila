@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { PencilIcon, TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import React, { useState, useMemo } from 'react';
+import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 interface Film {
   id: string;
@@ -90,13 +90,10 @@ const FilmsManagement: React.FC = () => {
     savePreferences(newPrefs);
   };
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isWatchModalOpen, setIsWatchModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
-  const [editingFilm, setEditingFilm] = useState<Film | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<Film>>({});
   const [selectedFilm, setSelectedFilm] = useState<Film | null>(null);
   const [rejectionNote, setRejectionNote] = useState('');
   const [selectedFilms, setSelectedFilms] = useState<Set<string>>(new Set());
