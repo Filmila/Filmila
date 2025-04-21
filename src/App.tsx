@@ -82,9 +82,139 @@ const App: React.FC = () => {
               } />
               <Route path="/dashboard" element={
                 <ProtectedRoute requiredRole="FILMMAKER">
-                  <div className="bg-white shadow rounded-lg p-6">
-                    <h1 className="text-2xl font-bold mb-4">Filmmaker Dashboard</h1>
-                    <p className="text-gray-600">Welcome to your filmmaker dashboard</p>
+                  <div className="p-6 space-y-6">
+                    <div className="flex justify-between items-center">
+                      <h1 className="text-2xl font-bold text-gray-900">Filmmaker Dashboard</h1>
+                      <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                        Upload New Film
+                      </button>
+                    </div>
+
+                    {/* Stats Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-500">Total Films</h3>
+                        <p className="mt-2 text-3xl font-semibold text-gray-900">2</p>
+                        <div className="mt-2">
+                          <span className="text-green-600 text-sm">+1 this month</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-500">Total Views</h3>
+                        <p className="mt-2 text-3xl font-semibold text-gray-900">2,100</p>
+                        <div className="mt-2">
+                          <span className="text-green-600 text-sm">+500 this week</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
+                        <p className="mt-2 text-3xl font-semibold text-gray-900">$2,100</p>
+                        <div className="mt-2">
+                          <span className="text-green-600 text-sm">+$500 this week</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-6 rounded-lg shadow">
+                        <h3 className="text-sm font-medium text-gray-500">Approval Rate</h3>
+                        <p className="mt-2 text-3xl font-semibold text-gray-900">50%</p>
+                        <div className="mt-2">
+                          <span className="text-yellow-600 text-sm">2 pending reviews</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Films List */}
+                    <div className="bg-white shadow rounded-lg">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-medium text-gray-900">Your Films</h2>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Upload Date</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            <tr>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">The Last Sunset</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                  Pending
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1,250</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$1,250</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-03-15</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                <button className="text-red-600 hover:text-red-900">Delete</button>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">Morning Light</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                  Pending
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">850</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">$850</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-03-16</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button className="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                <button className="text-red-600 hover:text-red-900">Delete</button>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Recent Activity */}
+                    <div className="bg-white shadow rounded-lg">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                      </div>
+                      <div className="p-6">
+                        <ul className="space-y-4">
+                          <li className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <span className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <span className="text-yellow-600">P</span>
+                              </span>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">Morning Light</span> is pending review
+                              </p>
+                              <p className="text-xs text-gray-500">2 days ago</p>
+                            </div>
+                          </li>
+                          <li className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <span className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <span className="text-yellow-600">P</span>
+                              </span>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-gray-700">
+                                <span className="font-medium">The Last Sunset</span> is pending review
+                              </p>
+                              <p className="text-xs text-gray-500">3 days ago</p>
+                            </div>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </ProtectedRoute>
               } />
