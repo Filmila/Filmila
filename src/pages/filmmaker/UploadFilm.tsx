@@ -57,8 +57,17 @@ const UploadFilm = () => {
       // Generate a unique key for the file
       const fileKey = `films/${user?.email}/${Date.now()}-${selectedFile.name}`;
       
+      console.log('Starting upload to S3...');
+      console.log('File details:', {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        key: fileKey
+      });
+
       // Upload file to S3
       const videoUrl = await uploadFileToS3(selectedFile, fileKey);
+      console.log('Upload successful. Video URL:', videoUrl);
       
       // Create a new film object with all required fields
       const newFilm: Film = {
@@ -81,8 +90,12 @@ const UploadFilm = () => {
       // Navigate to the dashboard
       navigate('/dashboard');
     } catch (err) {
-      setError('Failed to upload film. Please try again.');
-      console.error('Upload error:', err);
+      console.error('Upload error details:', err);
+      if (err instanceof Error) {
+        setError(`Upload failed: ${err.message}`);
+      } else {
+        setError('Failed to upload film. Please check your network connection and try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
