@@ -33,7 +33,7 @@ const UploadFilm = () => {
       // In a real app, you would make an API call here
       // const response = await api.post('/films', formData);
       
-      // Navigate to the filmmaker dashboard instead of homepage
+      // Navigate to the filmmaker dashboard after successful upload
       navigate('/dashboard');
     } catch (err) {
       setError('Failed to upload film. Please try again.');
