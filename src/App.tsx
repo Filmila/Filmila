@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import AdminLayout from './components/admin/AdminLayout'
 import FilmsManagement from './pages/admin/FilmsManagement'
 import UserManagement from './pages/admin/UserManagement'
+import Settings from './pages/admin/Settings'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'ADMIN' | 'FILMMAKER' | 'VIEWER' }> = ({ 
   children, 
@@ -75,10 +76,7 @@ const App: React.FC = () => {
               <Route path="/moderation/settings" element={
                 <ProtectedRoute requiredRole="ADMIN">
                   <AdminLayout>
-                    <div className="bg-white shadow rounded-lg p-6">
-                      <h1 className="text-2xl font-bold mb-4">Settings</h1>
-                      <p className="text-gray-600">Manage your account settings</p>
-                    </div>
+                    <Settings />
                   </AdminLayout>
                 </ProtectedRoute>
               } />
