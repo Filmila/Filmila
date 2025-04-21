@@ -9,6 +9,10 @@ import {
   CogIcon 
 } from '@heroicons/react/24/outline';
 
+interface AdminLayoutProps {
+  children?: React.ReactNode;
+}
+
 const navigation = [
   { name: 'Films', href: '/moderation/films', icon: FilmIcon },
   { name: 'Users', href: '/moderation/users', icon: UsersIcon },
@@ -18,7 +22,7 @@ const navigation = [
   { name: 'Settings', href: '/moderation/settings', icon: CogIcon },
 ];
 
-const AdminLayout: React.FC = () => {
+const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const location = useLocation();
 
   return (
@@ -70,7 +74,7 @@ const AdminLayout: React.FC = () => {
       <div className="pl-64">
         <main className="py-6">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <Outlet />
+            {children || <Outlet />}
           </div>
         </main>
       </div>
