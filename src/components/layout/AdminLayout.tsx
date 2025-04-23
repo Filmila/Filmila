@@ -3,8 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
   FilmIcon, 
-  Cog6ToothIcon, 
-  UserGroupIcon,
+  Cog6ToothIcon,
   ArrowLeftOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
