@@ -7,10 +7,10 @@ export interface Film {
   views: number;
   revenue: number;
   status: 'pending' | 'approved' | 'rejected';
-  uploadDate: string;
-  videoUrl: string;
-  rejectionNote?: string;
-  lastAction?: {
+  rejection_note?: string;
+  upload_date: string;
+  video_url: string;
+  last_action?: {
     type: 'approve' | 'reject';
     admin: string;
     date: string;

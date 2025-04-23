@@ -1,87 +1,66 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { Film } from '../../types';
+import { filmService } from '../../services/filmService';
 
-interface Film {
-  id: string;
-  title: string;
-  filmmaker: string;
-  views: number;
-  revenue: number;
-  price: number;
-  status: 'approved' | 'pending' | 'rejected';
-  rejectionNote?: string;
-  uploadDate: string;
-  videoUrl: string;
-  lastAction?: {
-    type: 'approve' | 'reject';
-    admin: string;
-    date: string;
-  };
-}
-
-type SortField = 'title' | 'filmmaker' | 'uploadDate' | 'status' | 'lastAction';
-type SortDirection = 'asc' | 'desc';
+type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
+type SortOrder = 'asc' | 'desc';
 
 interface FilterPreferences {
-  searchQuery: string;
-  statusFilter: 'all' | 'pending' | 'approved' | 'rejected';
-  dateRange: {
-    start: string;
-    end: string;
-  };
-  sortField: SortField;
-  sortDirection: SortDirection;
+  search_term: string;
+  status_filter: string;
+  sort_field: SortField;
+  sort_order: SortOrder;
+  start_date: string;
+  end_date: string;
 }
 
 const FilmsManagement: React.FC = () => {
+  const [films, setFilms] = useState<Film[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected_films, setSelectedFilms] = useState<Set<string>>(new Set());
+  const [confirm_action, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
+  const [is_reject_modal_open, setIsRejectModalOpen] = useState(false);
+  const [selected_film, setSelectedFilm] = useState<Film | null>(null);
+  const [rejection_note, setRejectionNote] = useState('');
+  const currentAdmin = 'Admin User'; // This should come from your auth context
+
+  useEffect(() => {
+    const fetchFilms = async () => {
+      try {
+        const data = await filmService.getFilms();
+        setFilms(data);
+      } catch (err) {
+        setError('Failed to fetch films');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFilms();
+  }, []);
+
   // Load saved preferences from localStorage
   const loadPreferences = (): FilterPreferences => {
     const saved = localStorage.getItem('filmManagementPreferences');
-    if (saved) {
-      return JSON.parse(saved);
-    }
-    return {
-      searchQuery: '',
-      statusFilter: 'all',
-      dateRange: {
-        start: '',
-        end: '',
-      },
-      sortField: 'uploadDate',
-      sortDirection: 'desc',
+    return saved ? JSON.parse(saved) : {
+      search_term: '',
+      status_filter: 'all',
+      sort_field: 'upload_date',
+      sort_order: 'desc',
+      start_date: '',
+      end_date: ''
     };
   };
+
+  const [preferences, setPreferences] = useState<FilterPreferences>(loadPreferences());
 
   // Save preferences to localStorage
   const savePreferences = (prefs: FilterPreferences) => {
     localStorage.setItem('filmManagementPreferences', JSON.stringify(prefs));
   };
-
-  const [preferences, setPreferences] = useState<FilterPreferences>(loadPreferences());
-  const [films, setFilms] = useState<Film[]>([
-    {
-      id: '1',
-      title: 'The Last Sunset',
-      filmmaker: 'John Doe',
-      views: 1250,
-      revenue: 1250,
-      price: 1,
-      status: 'pending',
-      uploadDate: '2024-03-15',
-      videoUrl: 'https://example.com/video1.mp4',
-    },
-    {
-      id: '2',
-      title: 'Morning Light',
-      filmmaker: 'Jane Smith',
-      views: 850,
-      revenue: 850,
-      price: 1,
-      status: 'pending',
-      uploadDate: '2024-03-16',
-      videoUrl: 'https://example.com/video2.mp4',
-    },
-  ]);
 
   // Update preferences and save to localStorage
   const updatePreferences = (updates: Partial<FilterPreferences>) => {
@@ -90,21 +69,15 @@ const FilmsManagement: React.FC = () => {
     savePreferences(newPrefs);
   };
 
-  const [isWatchModalOpen, setIsWatchModalOpen] = useState(false);
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
-  const [selectedFilm, setSelectedFilm] = useState<Film | null>(null);
-  const [rejectionNote, setRejectionNote] = useState('');
-  const [selectedFilms, setSelectedFilms] = useState<Set<string>>(new Set());
+  const [is_watch_modal_open, setIsWatchModalOpen] = useState(false);
 
   // Filter and sort films
   const filteredAndSortedFilms = useMemo(() => {
     let result = [...films];
 
     // Apply search filter
-    if (preferences.searchQuery) {
-      const query = preferences.searchQuery.toLowerCase();
+    if (preferences.search_term) {
+      const query = preferences.search_term.toLowerCase();
       result = result.filter(film => 
         film.title.toLowerCase().includes(query) || 
         film.filmmaker.toLowerCase().includes(query)
@@ -112,59 +85,59 @@ const FilmsManagement: React.FC = () => {
     }
 
     // Apply status filter
-    if (preferences.statusFilter !== 'all') {
-      result = result.filter(film => film.status === preferences.statusFilter);
+    if (preferences.status_filter !== 'all') {
+      result = result.filter(film => film.status === preferences.status_filter);
     }
 
     // Apply date range filter
-    if (preferences.dateRange.start) {
-      const startDate = new Date(preferences.dateRange.start);
-      result = result.filter(film => new Date(film.uploadDate) >= startDate);
+    if (preferences.start_date) {
+      const startDate = new Date(preferences.start_date);
+      result = result.filter(film => new Date(film.upload_date) >= startDate);
     }
-    if (preferences.dateRange.end) {
-      const endDate = new Date(preferences.dateRange.end);
-      result = result.filter(film => new Date(film.uploadDate) <= endDate);
+    if (preferences.end_date) {
+      const endDate = new Date(preferences.end_date);
+      result = result.filter(film => new Date(film.upload_date) <= endDate);
     }
 
     // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
-      switch (preferences.sortField) {
+      switch (preferences.sort_field) {
         case 'title':
           comparison = a.title.localeCompare(b.title);
           break;
         case 'filmmaker':
           comparison = a.filmmaker.localeCompare(b.filmmaker);
           break;
-        case 'uploadDate':
-          comparison = new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
+        case 'upload_date':
+          comparison = new Date(a.upload_date).getTime() - new Date(b.upload_date).getTime();
           break;
         case 'status':
           comparison = a.status.localeCompare(b.status);
           break;
-        case 'lastAction':
-          const dateA = a.lastAction?.date ? new Date(a.lastAction.date).getTime() : 0;
-          const dateB = b.lastAction?.date ? new Date(b.lastAction.date).getTime() : 0;
+        case 'last_action':
+          const dateA = a.last_action?.date ? new Date(a.last_action.date).getTime() : 0;
+          const dateB = b.last_action?.date ? new Date(b.last_action.date).getTime() : 0;
           comparison = dateA - dateB;
           break;
       }
-      return preferences.sortDirection === 'asc' ? comparison : -comparison;
+      return preferences.sort_order === 'asc' ? comparison : -comparison;
     });
 
     return result;
   }, [films, preferences]);
 
   const handleSort = (field: SortField) => {
-    if (preferences.sortField === field) {
-      setPreferences(prev => ({ ...prev, sortDirection: prev.sortDirection === 'asc' ? 'desc' : 'asc' }));
+    if (preferences.sort_field === field) {
+      setPreferences(prev => ({ ...prev, sort_order: prev.sort_order === 'asc' ? 'desc' : 'asc' }));
     } else {
-      setPreferences(prev => ({ ...prev, sortField: field, sortDirection: 'asc' }));
+      setPreferences(prev => ({ ...prev, sort_field: field, sort_order: 'asc' }));
     }
   };
 
   const getSortIcon = (field: SortField) => {
-    if (preferences.sortField !== field) return null;
-    return preferences.sortDirection === 'asc' ? (
+    if (preferences.sort_field !== field) return null;
+    return preferences.sort_order === 'asc' ? (
       <ChevronUpIcon className="h-4 w-4" />
     ) : (
       <ChevronDownIcon className="h-4 w-4" />
@@ -172,7 +145,7 @@ const FilmsManagement: React.FC = () => {
   };
 
   const handleSelectFilm = (filmId: string) => {
-    const newSelected = new Set(selectedFilms);
+    const newSelected = new Set(selected_films);
     if (newSelected.has(filmId)) {
       newSelected.delete(filmId);
     } else {
@@ -182,7 +155,7 @@ const FilmsManagement: React.FC = () => {
   };
 
   const handleSelectAll = () => {
-    if (selectedFilms.size === filteredAndSortedFilms.length) {
+    if (selected_films.size === filteredAndSortedFilms.length) {
       setSelectedFilms(new Set());
     } else {
       setSelectedFilms(new Set(filteredAndSortedFilms.map(f => f.id)));
@@ -199,34 +172,35 @@ const FilmsManagement: React.FC = () => {
     setIsConfirmModalOpen(true);
   };
 
-  const confirmBulkAction = () => {
-    if (confirmAction === 'approve') {
-      const now = new Date().toISOString();
-      const updatedFilms: Film[] = films.map(f => 
-        selectedFilms.has(f.id) 
-          ? { 
-              ...f, 
-              status: 'approved' as const, 
-              rejectionNote: undefined,
-              lastAction: {
-                type: 'approve' as const,
-                admin: currentAdmin,
-                date: now
-              }
-            } 
-          : f
-      );
-      setFilms(updatedFilms);
-    } else if (confirmAction === 'reject') {
-      setSelectedFilm(films.find(f => f.id === Array.from(selectedFilms)[0]) || null);
+  const confirmBulkAction = async () => {
+    if (confirm_action === 'approve') {
+      try {
+        const now = new Date().toISOString();
+        const updatedFilms: Film[] = await Promise.all(Array.from(selected_films).map(async id => {
+          const updatedFilm = await filmService.updateFilmStatus(id, 'approved', undefined);
+          return updatedFilm;
+        }));
+        setFilms(updatedFilms);
+      } catch (err) {
+        setError('Failed to bulk approve films');
+        console.error(err);
+      }
+    } else if (confirm_action === 'reject') {
+      setSelectedFilm(films.find(f => f.id === Array.from(selected_films)[0]) || null);
       setIsRejectModalOpen(true);
     }
     setIsConfirmModalOpen(false);
     setConfirmAction(null);
   };
 
-  const handleDelete = (id: string) => {
-    setFilms(films.filter(film => film.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await filmService.deleteFilm(id);
+      setFilms(films.filter(film => film.id !== id));
+    } catch (err) {
+      setError('Failed to delete film');
+      console.error(err);
+    }
   };
 
   const handleWatch = (film: Film) => {
@@ -234,40 +208,37 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const handleApprove = (film: Film) => {
-    const now = new Date().toISOString();
-    const updatedFilms: Film[] = films.map(f => 
-      f.id === film.id 
-        ? { 
-            ...f, 
-            status: 'approved' as const, 
-            rejectionNote: undefined,
-            lastAction: {
-              type: 'approve' as const,
-              admin: currentAdmin,
-              date: now
-            }
-          } 
-        : f
-    );
-    setFilms(updatedFilms);
+  const handleApprove = async (film: Film) => {
+    try {
+      const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved', undefined);
+      setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
+    } catch (err) {
+      setError('Failed to approve film');
+      console.error(err);
+    }
   };
 
-  const handleReject = (film: Film) => {
-    setSelectedFilm(film);
-    setIsRejectModalOpen(true);
+  const handleReject = async (film: Film) => {
+    try {
+      const updatedFilm = await filmService.updateFilmStatus(film.id, 'rejected', rejection_note);
+      setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
+      setIsRejectModalOpen(true);
+    } catch (err) {
+      setError('Failed to reject film');
+      console.error(err);
+    }
   };
 
   const handleSaveRejection = () => {
-    if (selectedFilm) {
+    if (selected_film) {
       const now = new Date().toISOString();
       const updatedFilms: Film[] = films.map(f => {
-        if (selectedFilms.has(f.id) || f.id === selectedFilm.id) {
+        if (selected_films.has(f.id) || f.id === selected_film.id) {
           return {
             ...f,
             status: 'rejected' as const,
-            rejectionNote,
-            lastAction: {
+            rejection_note: rejection_note,
+            last_action: {
               type: 'reject' as const,
               admin: currentAdmin,
               date: now
@@ -314,11 +285,11 @@ const FilmsManagement: React.FC = () => {
     const rows = filteredAndSortedFilms.map(film => [
       film.title,
       film.filmmaker,
-      film.uploadDate,
+      film.upload_date,
       film.status,
-      film.rejectionNote || '',
-      film.lastAction ? `${film.lastAction.type} on ${new Date(film.lastAction.date).toLocaleString()}` : '',
-      film.lastAction?.admin || ''
+      film.rejection_note || '',
+      film.last_action ? `${film.last_action.type} on ${new Date(film.last_action.date).toLocaleString()}` : '',
+      film.last_action?.admin || ''
     ]);
 
     const csvContent = [
@@ -337,26 +308,26 @@ const FilmsManagement: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const currentAdmin = 'Admin User'; // This would come from your auth system
+  const [is_confirm_modal_open, setIsConfirmModalOpen] = useState(false);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Film Management</h1>
         <div className="space-x-2">
-          {selectedFilms.size > 0 && (
+          {selected_films.size > 0 && (
             <>
               <button
                 onClick={handleBulkApprove}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
-                Bulk Approve ({selectedFilms.size})
+                Bulk Approve ({selected_films.size})
               </button>
               <button
                 onClick={handleBulkReject}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
-                Bulk Reject ({selectedFilms.size})
+                Bulk Reject ({selected_films.size})
               </button>
             </>
           )}
@@ -382,16 +353,16 @@ const FilmsManagement: React.FC = () => {
             </div>
             <input
               type="text"
-              value={preferences.searchQuery}
-              onChange={(e) => updatePreferences({ searchQuery: e.target.value })}
+              value={preferences.search_term}
+              onChange={(e) => updatePreferences({ search_term: e.target.value })}
               placeholder="Search by title or filmmaker..."
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
           <div className="flex gap-2">
             <select
-              value={preferences.statusFilter}
-              onChange={(e) => updatePreferences({ statusFilter: e.target.value as any })}
+              value={preferences.status_filter}
+              onChange={(e) => updatePreferences({ status_filter: e.target.value })}
               className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="all">All Status</option>
@@ -408,10 +379,8 @@ const FilmsManagement: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">Start Date</label>
             <input
               type="date"
-              value={preferences.dateRange.start}
-              onChange={(e) => updatePreferences({
-                dateRange: { ...preferences.dateRange, start: e.target.value }
-              })}
+              value={preferences.start_date}
+              onChange={(e) => updatePreferences({ start_date: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
@@ -419,17 +388,16 @@ const FilmsManagement: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">End Date</label>
             <input
               type="date"
-              value={preferences.dateRange.end}
-              onChange={(e) => updatePreferences({
-                dateRange: { ...preferences.dateRange, end: e.target.value }
-              })}
+              value={preferences.end_date}
+              onChange={(e) => updatePreferences({ end_date: e.target.value })}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={() => updatePreferences({
-                dateRange: { start: '', end: '' }
+                start_date: '',
+                end_date: ''
               })}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
             >
@@ -447,7 +415,7 @@ const FilmsManagement: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <input
                     type="checkbox"
-                    checked={selectedFilms.size === filteredAndSortedFilms.length}
+                    checked={selected_films.size === filteredAndSortedFilms.length}
                     onChange={handleSelectAll}
                     className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
@@ -472,11 +440,11 @@ const FilmsManagement: React.FC = () => {
                 </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('uploadDate')}
+                  onClick={() => handleSort('upload_date')}
                 >
                   <div className="flex items-center">
                     Upload Date
-                    {getSortIcon('uploadDate')}
+                    {getSortIcon('upload_date')}
                   </div>
                 </th>
                 <th 
@@ -490,11 +458,11 @@ const FilmsManagement: React.FC = () => {
                 </th>
                 <th 
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('lastAction')}
+                  onClick={() => handleSort('last_action')}
                 >
                   <div className="flex items-center">
                     Last Action
-                    {getSortIcon('lastAction')}
+                    {getSortIcon('last_action')}
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -508,7 +476,7 @@ const FilmsManagement: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
-                      checked={selectedFilms.has(film.id)}
+                      checked={selected_films.has(film.id)}
                       onChange={() => handleSelectFilm(film.id)}
                       className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     />
@@ -520,16 +488,16 @@ const FilmsManagement: React.FC = () => {
                     <div className="text-sm text-gray-500">{film.filmmaker}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{film.uploadDate}</div>
+                    <div className="text-sm text-gray-500">{film.upload_date}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(film.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {film.lastAction && (
+                    {film.last_action && (
                       <div className="text-xs text-gray-500">
-                        <div>{film.lastAction.type === 'approve' ? 'Approved' : 'Rejected'} by {film.lastAction.admin}</div>
-                        <div>{new Date(film.lastAction.date).toLocaleString()}</div>
+                        <div>{film.last_action.type === 'approve' ? 'Approved' : 'Rejected'} by {film.last_action.admin}</div>
+                        <div>{new Date(film.last_action.date).toLocaleString()}</div>
                       </div>
                     )}
                   </td>
@@ -571,15 +539,15 @@ const FilmsManagement: React.FC = () => {
       </div>
 
       {/* Confirmation Modal */}
-      {isConfirmModalOpen && confirmAction && (
+      {is_confirm_modal_open && confirm_action && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Confirm {confirmAction === 'approve' ? 'Approval' : 'Rejection'}
+                Confirm {confirm_action === 'approve' ? 'Approval' : 'Rejection'}
               </h3>
               <p className="text-sm text-gray-500">
-                Are you sure you want to {confirmAction} {selectedFilms.size} film{selectedFilms.size !== 1 ? 's' : ''}?
+                Are you sure you want to {confirm_action} {selected_films.size} film{selected_films.size !== 1 ? 's' : ''}?
               </p>
             </div>
             <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
@@ -595,12 +563,12 @@ const FilmsManagement: React.FC = () => {
               <button
                 onClick={confirmBulkAction}
                 className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-                  confirmAction === 'approve' 
+                  confirm_action === 'approve' 
                     ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
                     : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
                 } focus:outline-none focus:ring-2 focus:ring-offset-2`}
               >
-                Confirm {confirmAction === 'approve' ? 'Approval' : 'Rejection'}
+                Confirm {confirm_action === 'approve' ? 'Approval' : 'Rejection'}
               </button>
             </div>
           </div>
@@ -608,11 +576,11 @@ const FilmsManagement: React.FC = () => {
       )}
 
       {/* Watch Modal */}
-      {isWatchModalOpen && selectedFilm && (
+      {is_watch_modal_open && selected_film && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Watch Film: {selectedFilm.title}</h3>
+              <h3 className="text-lg font-medium text-gray-900">Watch Film: {selected_film.title}</h3>
               <button
                 onClick={() => setIsWatchModalOpen(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -623,21 +591,21 @@ const FilmsManagement: React.FC = () => {
             <div className="p-4">
               <div className="aspect-w-16 aspect-h-9">
                 <video
-                  src={selectedFilm.videoUrl}
+                  src={selected_film.video_url}
                   controls
                   className="w-full h-full rounded-lg"
                 />
               </div>
               <div className="mt-4 space-y-2">
-                <p className="text-sm text-gray-500">Filmmaker: {selectedFilm.filmmaker}</p>
-                <p className="text-sm text-gray-500">Upload Date: {selectedFilm.uploadDate}</p>
-                <p className="text-sm text-gray-500">Status: {selectedFilm.status}</p>
-                {selectedFilm.rejectionNote && (
-                  <p className="text-sm text-red-600">Rejection Note: {selectedFilm.rejectionNote}</p>
+                <p className="text-sm text-gray-500">Filmmaker: {selected_film.filmmaker}</p>
+                <p className="text-sm text-gray-500">Upload Date: {selected_film.upload_date}</p>
+                <p className="text-sm text-gray-500">Status: {selected_film.status}</p>
+                {selected_film.rejection_note && (
+                  <p className="text-sm text-red-600">Rejection Note: {selected_film.rejection_note}</p>
                 )}
-                {selectedFilm.lastAction && (
+                {selected_film.last_action && (
                   <p className="text-sm text-gray-500">
-                    Last Action: {selectedFilm.lastAction.type === 'approve' ? 'Approved' : 'Rejected'} by {selectedFilm.lastAction.admin} on {new Date(selectedFilm.lastAction.date).toLocaleString()}
+                    Last Action: {selected_film.last_action.type === 'approve' ? 'Approved' : 'Rejected'} by {selected_film.last_action.admin} on {new Date(selected_film.last_action.date).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -647,11 +615,11 @@ const FilmsManagement: React.FC = () => {
       )}
 
       {/* Reject Modal */}
-      {isRejectModalOpen && selectedFilm && (
+      {is_reject_modal_open && selected_film && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
             <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Reject Film: {selectedFilm.title}</h3>
+              <h3 className="text-lg font-medium text-gray-900">Reject Film: {selected_film.title}</h3>
               <button
                 onClick={() => setIsRejectModalOpen(false)}
                 className="text-gray-400 hover:text-gray-500"
@@ -663,7 +631,7 @@ const FilmsManagement: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="aspect-w-16 aspect-h-9">
                   <video
-                    src={selectedFilm.videoUrl}
+                    src={selected_film.video_url}
                     controls
                     className="w-full h-full rounded-lg"
                   />
@@ -674,7 +642,7 @@ const FilmsManagement: React.FC = () => {
                       Reason for Rejection
                     </label>
                     <textarea
-                      value={rejectionNote}
+                      value={rejection_note}
                       onChange={(e) => setRejectionNote(e.target.value)}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       rows={4}
@@ -682,8 +650,8 @@ const FilmsManagement: React.FC = () => {
                     />
                   </div>
                   <div className="text-sm text-gray-500">
-                    <p>Filmmaker: {selectedFilm.filmmaker}</p>
-                    <p>Upload Date: {selectedFilm.uploadDate}</p>
+                    <p>Filmmaker: {selected_film.filmmaker}</p>
+                    <p>Upload Date: {selected_film.upload_date}</p>
                   </div>
                 </div>
               </div>
@@ -699,7 +667,7 @@ const FilmsManagement: React.FC = () => {
                 onClick={handleSaveRejection}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                Reject Film{selectedFilms.size > 0 ? `s (${selectedFilms.size})` : ''}
+                Reject Film{selected_films.size > 0 ? `s (${selected_films.size})` : ''}
               </button>
             </div>
           </div>

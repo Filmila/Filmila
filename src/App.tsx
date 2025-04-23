@@ -8,7 +8,9 @@ import FilmsManagement from './pages/admin/FilmsManagement'
 import UserManagement from './pages/admin/UserManagement'
 import Settings from './pages/admin/Settings'
 import UploadFilm from './pages/filmmaker/UploadFilm'
+import Home from './pages/Home'
 import TestConnection from './pages/TestConnection'
+import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'ADMIN' | 'FILMMAKER' | 'VIEWER' }> = ({ 
   children, 
@@ -33,8 +35,11 @@ const App: React.FC = () => {
       <Router>
         <Toaster />
         <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="/test-connection" element={<TestConnection />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* Admin Routes */}
           <Route path="/admin/*" element={
             <ProtectedRoute requiredRole="ADMIN">
               <AdminLayout>
@@ -47,12 +52,20 @@ const App: React.FC = () => {
               </AdminLayout>
             </ProtectedRoute>
           } />
-          <Route path="/upload" element={
+
+          {/* Filmmaker Routes */}
+          <Route path="/filmmaker/*" element={
             <ProtectedRoute requiredRole="FILMMAKER">
-              <UploadFilm />
+              <Routes>
+                <Route path="dashboard" element={<FilmmakerDashboard />} />
+                <Route path="upload" element={<UploadFilm />} />
+                <Route index element={<Navigate to="dashboard" replace />} />
+              </Routes>
             </ProtectedRoute>
           } />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

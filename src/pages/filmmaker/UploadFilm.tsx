@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Film } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { uploadFileToS3 } from '../../services/s3Service';
+import { filmService } from '../../services/filmService';
 
 const UploadFilm = () => {
   const navigate = useNavigate();
@@ -70,8 +71,7 @@ const UploadFilm = () => {
       console.log('Upload successful. Video URL:', videoUrl);
       
       // Create a new film object with all required fields
-      const newFilm: Film = {
-        id: Date.now().toString(),
+      const newFilm: Omit<Film, 'id'> = {
         title: formData.title || '',
         filmmaker: user?.email || 'Unknown Filmmaker',
         description: formData.description || '',
@@ -79,13 +79,12 @@ const UploadFilm = () => {
         views: 0,
         revenue: 0,
         status: 'pending',
-        uploadDate: new Date().toISOString(),
-        videoUrl,
+        upload_date: new Date().toISOString(),
+        video_url: videoUrl,
       };
 
-      // Store film data in localStorage
-      const existingFilms = JSON.parse(localStorage.getItem('films') || '[]');
-      localStorage.setItem('films', JSON.stringify([...existingFilms, newFilm]));
+      // Store film in database
+      await filmService.createFilm(newFilm);
       
       // Navigate to the dashboard
       navigate('/dashboard');

@@ -10,8 +10,7 @@
 /build
 /dist
 
-# Misc
-.DS_Store
+# Environment Variables
 .env
 .env.local
 .env.development.local
@@ -24,8 +23,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor directories and files
+.vscode/*
+!.vscode/extensions.json
 .idea
-.vscode
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
