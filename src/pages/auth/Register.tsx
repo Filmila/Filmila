@@ -12,42 +12,54 @@ export default function Register() {
     role: 'VIEWER' as 'ADMIN' | 'FILMMAKER' | 'VIEWER'
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setDebugInfo('Starting registration...');
 
     try {
+      // Log the attempt
+      console.log('Registration attempt with:', { 
+        email: formData.email, 
+        role: formData.role,
+        passwordLength: formData.password.length 
+      });
+
       // Validate email format with a more permissive regex
       const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
       if (!emailRegex.test(formData.email)) {
-        toast.error('Please enter a valid email address (e.g., user@gmail.com)', { duration: 5000 });
-        setIsLoading(false);
-        return;
-      }
-
-      // Suggest common email domains if using test.com
-      if (formData.email.endsWith('@test.com')) {
-        toast.error('Please use a valid email domain (e.g., @gmail.com, @outlook.com, @yahoo.com)', { duration: 5000 });
+        const msg = 'Please enter a valid email address (e.g., user@gmail.com)';
+        console.log('Email validation failed:', msg);
+        toast.error(msg, { duration: 5000 });
+        setDebugInfo('Email validation failed');
         setIsLoading(false);
         return;
       }
 
       // Validate password length
       if (formData.password.length < 6) {
-        toast.error('Password must be at least 6 characters long');
+        const msg = 'Password must be at least 6 characters long';
+        console.log('Password validation failed:', msg);
+        toast.error(msg);
+        setDebugInfo('Password validation failed');
         setIsLoading(false);
         return;
       }
 
       // Validate passwords match
       if (formData.password !== formData.confirmPassword) {
-        toast.error('Passwords do not match');
+        const msg = 'Passwords do not match';
+        console.log('Password match validation failed');
+        toast.error(msg);
+        setDebugInfo('Passwords do not match');
         setIsLoading(false);
         return;
       }
 
-      console.log('Starting registration process...');
+      setDebugInfo('Calling Supabase auth.signUp...');
+      console.log('Starting Supabase registration...');
 
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -61,18 +73,26 @@ export default function Register() {
         }
       });
 
-      console.log('Supabase auth response:', { authData, authError });
+      console.log('Supabase auth response:', {
+        user: authData?.user ? 'User created' : 'No user created',
+        error: authError ? authError.message : 'No error'
+      });
 
       if (authError) {
         console.error('Supabase auth error:', authError);
+        setDebugInfo(`Auth error: ${authError.message}`);
         throw authError;
       }
 
       if (!authData.user) {
-        throw new Error('No user data received from registration');
+        const msg = 'No user data received from registration';
+        console.error(msg);
+        setDebugInfo(msg);
+        throw new Error(msg);
       }
 
-      console.log('User created successfully:', authData.user);
+      setDebugInfo('Creating user profile...');
+      console.log('Creating user profile for:', authData.user.id);
 
       // Create profile with role
       const { error: profileError } = await supabase
@@ -87,10 +107,12 @@ export default function Register() {
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
+        setDebugInfo(`Profile error: ${profileError.message}`);
         throw profileError;
       }
 
-      console.log('Profile created successfully');
+      console.log('Registration completed successfully');
+      setDebugInfo('Registration successful!');
 
       // Show success message
       toast.success(
@@ -113,6 +135,7 @@ export default function Register() {
 
     } catch (error: any) {
       console.error('Registration error:', error);
+      setDebugInfo(`Error: ${error.message}`);
       
       if (error.message.includes('User already registered')) {
         toast.error('This email is already registered. Please try logging in instead.');
@@ -230,6 +253,12 @@ export default function Register() {
               {isLoading ? 'Registering...' : 'Register'}
             </button>
           </div>
+
+          {debugInfo && (
+            <div className="mt-2 text-sm text-gray-600 text-center">
+              Status: {debugInfo}
+            </div>
+          )}
 
           <div className="text-center">
             <a
