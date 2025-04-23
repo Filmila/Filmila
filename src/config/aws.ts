@@ -18,9 +18,11 @@ if (!accessKeyId || !secretAccessKey) {
 export const s3Client = new S3Client({
   region,
   credentials: {
-    accessKeyId,
-    secretAccessKey,
+    accessKeyId: accessKeyId || '',
+    secretAccessKey: secretAccessKey || '',
   },
+  forcePathStyle: false,
+  endpoint: `https://s3.${region}.amazonaws.com`,
 });
 
 export const BUCKET_NAME = bucketName; 
