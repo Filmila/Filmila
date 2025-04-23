@@ -97,6 +97,7 @@ export default function Register() {
       console.log('Creating user profile for:', authData.user.id);
 
       // Create profile with role
+      console.log('Creating profile with role:', formData.role);
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([
@@ -104,7 +105,7 @@ export default function Register() {
             id: authData.user.id,
             role: formData.role,
             email: formData.email,
-            display_name: formData.email.split('@')[0], // Default display name from email
+            display_name: formData.email.split('@')[0],
             phone: null,
             providers: [],
             provider_type: 'email',
@@ -118,6 +119,8 @@ export default function Register() {
         setDebugInfo(`Profile error: ${profileError.message || JSON.stringify(profileError)}`);
         throw profileError;
       }
+
+      console.log('Profile created successfully with role:', formData.role);
 
       console.log('Registration completed successfully');
       setDebugInfo('Registration successful!');

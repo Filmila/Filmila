@@ -50,20 +50,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
+      console.log('Fetching user profile for:', supabaseUser.email);
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', supabaseUser.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile:', error);
+        throw error;
+      }
+
+      console.log('Fetched profile:', profile);
 
       const userData = {
         id: supabaseUser.id,
         email: supabaseUser.email!,
-        role: profile.role
+        role: profile.role.toUpperCase()
       };
 
+      console.log('Setting user data:', userData);
       setUser(userData);
       setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userData));
