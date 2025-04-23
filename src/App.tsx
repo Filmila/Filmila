@@ -11,45 +11,49 @@ import FilmsManagement from './pages/admin/FilmsManagement';
 import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/layout/Navbar';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Toaster />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/test-connection" element={<TestConnection />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin/*" element={
-            <ProtectedRoute requiredRole="ADMIN">
-              <AdminLayout>
+        <Navbar />
+        <main className="min-h-screen bg-gray-50 pt-4">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/test-connection" element={<TestConnection />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/*" element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminLayout>
+                  <Routes>
+                    <Route path="films" element={<FilmsManagement />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route index element={<Navigate to="films" replace />} />
+                  </Routes>
+                </AdminLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* Filmmaker Routes */}
+            <Route path="/filmmaker/*" element={
+              <ProtectedRoute requiredRole="FILMMAKER">
                 <Routes>
-                  <Route path="films" element={<FilmsManagement />} />
-                  <Route path="settings" element={<Settings />} />
-                  <Route index element={<Navigate to="films" replace />} />
+                  <Route path="dashboard" element={<FilmmakerDashboard />} />
+                  <Route path="upload" element={<UploadFilm />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
                 </Routes>
-              </AdminLayout>
-            </ProtectedRoute>
-          } />
+              </ProtectedRoute>
+            } />
 
-          {/* Filmmaker Routes */}
-          <Route path="/filmmaker/*" element={
-            <ProtectedRoute requiredRole="FILMMAKER">
-              <Routes>
-                <Route path="dashboard" element={<FilmmakerDashboard />} />
-                <Route path="upload" element={<UploadFilm />} />
-                <Route index element={<Navigate to="dashboard" replace />} />
-              </Routes>
-            </ProtectedRoute>
-          } />
-
-          {/* Catch-all route */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Catch-all route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </Router>
     </AuthProvider>
   );
