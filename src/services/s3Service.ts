@@ -17,13 +17,12 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
 
-    // Create the upload command
+    // Create the upload command without ACL
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
       Body: uint8Array,
       ContentType: file.type,
-      ACL: 'public-read',
       ContentLength: uint8Array.length,
     });
 
@@ -54,6 +53,10 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
         }
         if (uploadError.message.includes('NoSuchBucket')) {
           throw new Error(`Bucket "${BUCKET_NAME}" not found. Please check your configuration`);
+        }
+        if (uploadError.message.includes('does not allow ACLs')) {
+          // If we get an ACL error, we'll need to update the bucket policy instead
+          console.log('Note: Bucket does not allow ACLs. Make sure the bucket policy grants public read access.');
         }
       }
       
