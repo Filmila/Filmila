@@ -76,12 +76,13 @@ export default function Register() {
       console.log('Supabase auth response:', {
         user: authData?.user ? 'User created' : 'No user created',
         error: authError ? authError.message : 'No error',
-        session: authData?.session ? 'Session created' : 'No session'
+        session: authData?.session ? 'Session created' : 'No session',
+        fullError: authError
       });
 
       if (authError) {
         console.error('Supabase auth error:', authError);
-        setDebugInfo(`Auth error: ${authError.message}`);
+        setDebugInfo(`Auth error: ${authError.message || JSON.stringify(authError)}`);
         throw authError;
       }
 
@@ -102,13 +103,19 @@ export default function Register() {
           {
             id: authData.user.id,
             role: formData.role,
-            email: formData.email
+            email: formData.email,
+            display_name: formData.email.split('@')[0], // Default display name from email
+            phone: null,
+            providers: [],
+            provider_type: 'email',
+            created_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString()
           }
         ]);
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
-        setDebugInfo(`Profile error: ${profileError.message}`);
+        setDebugInfo(`Profile error: ${profileError.message || JSON.stringify(profileError)}`);
         throw profileError;
       }
 
@@ -136,7 +143,7 @@ export default function Register() {
 
     } catch (error: any) {
       console.error('Registration error:', error);
-      setDebugInfo(`Error: ${error.message || 'Unknown error occurred'}`);
+      setDebugInfo(`Error: ${error.message || JSON.stringify(error) || 'Unknown error occurred'}`);
       
       if (error.message?.includes('User already registered')) {
         toast.error('This email is already registered. Please try logging in instead.');
