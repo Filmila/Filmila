@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import Login from './pages/auth/Login'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -8,9 +8,6 @@ import FilmsManagement from './pages/admin/FilmsManagement'
 import UserManagement from './pages/admin/UserManagement'
 import Settings from './pages/admin/Settings'
 import UploadFilm from './pages/filmmaker/UploadFilm'
-import { PlusIcon } from '@heroicons/react/24/outline'
-import Layout from './components/Layout'
-import Home from './pages/Home'
 import TestConnection from './pages/TestConnection'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'ADMIN' | 'FILMMAKER' | 'VIEWER' }> = ({ 
@@ -55,7 +52,7 @@ const App: React.FC = () => {
               <UploadFilm />
             </ProtectedRoute>
           } />
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
     </AuthProvider>
