@@ -18,9 +18,25 @@ export default function Register() {
     setIsLoading(true);
 
     try {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast.error('Please enter a valid email address');
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate password length
+      if (formData.password.length < 6) {
+        toast.error('Password must be at least 6 characters long');
+        setIsLoading(false);
+        return;
+      }
+
       // Validate passwords match
       if (formData.password !== formData.confirmPassword) {
         toast.error('Passwords do not match');
+        setIsLoading(false);
         return;
       }
 
@@ -28,9 +44,15 @@ export default function Register() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Supabase auth error:', authError);
+        throw authError;
+      }
 
       if (authData.user) {
         // Create profile with role
@@ -43,14 +65,23 @@ export default function Register() {
             }
           ]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw profileError;
+        }
 
         toast.success('Registration successful! Please check your email to confirm your account.');
         navigate('/login');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error(error.message || 'Registration failed. Please try again.');
+      if (error.message.includes('User already registered')) {
+        toast.error('This email is already registered. Please try logging in instead.');
+      } else if (error.message.includes('Password should be at least')) {
+        toast.error('Password must be at least 6 characters long');
+      } else {
+        toast.error(error.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -99,8 +130,9 @@ export default function Register() {
                 type="password"
                 autoComplete="new-password"
                 required
+                minLength={6}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                placeholder="Password (min 6 characters)"
                 value={formData.password}
                 onChange={handleChange}
               />
@@ -115,6 +147,7 @@ export default function Register() {
                 type="password"
                 autoComplete="new-password"
                 required
+                minLength={6}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
@@ -149,7 +182,7 @@ export default function Register() {
             </button>
           </div>
 
-          <div className="text-sm text-center">
+          <div className="text-center">
             <a
               href="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
