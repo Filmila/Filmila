@@ -10,10 +10,14 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
       fileType: file.type
     });
 
+    // Convert File to ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
-      Body: file,
+      Body: buffer,
       ContentType: file.type,
     });
 
