@@ -69,7 +69,9 @@ export default function Register() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             role: formData.role
-          }
+          },
+          // Skip email verification
+          autoConfirmEmail: true
         }
       });
 
