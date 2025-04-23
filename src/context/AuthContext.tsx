@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../config/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User {
+  id: string;
   email: string;
   role: 'ADMIN' | 'FILMMAKER' | 'VIEWER';
 }
@@ -8,7 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -19,61 +22,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check for stored user data on initial load
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        console.log('Restored user from localStorage:', parsedUser);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
+    // Check for existing session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await fetchUserProfile(session.user);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await fetchUserProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setIsAuthenticated(false);
         localStorage.removeItem('user');
       }
-    }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (error) throw error;
+
+      const userData = {
+        id: supabaseUser.id,
+        email: supabaseUser.email!,
+        role: profile.role
+      };
+
+      setUser(userData);
+      setIsAuthenticated(true);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      await supabase.auth.signOut();
+    }
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Temporary user database (replace with real authentication later)
-      const users = {
-        'at3bk-m@outlook.com': {
-          password: '12312311',
-          role: 'ADMIN' as const
-        },
-        'filmmaker@test.com': {
-          password: 'filmmaker123',
-          role: 'FILMMAKER' as const
-        },
-        'viewer@test.com': {
-          password: 'viewer123',
-          role: 'VIEWER' as const
-        }
-      };
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      const userData = users[email as keyof typeof users];
-      
-      if (userData && userData.password === password) {
-        const user = { email, role: userData.role };
-        console.log('Setting user:', user);
-        setUser(user);
-        setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify(user));
-        return true;
-      }
-      return false;
+      if (error) throw error;
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       return false;
     }
   };
 
-  const logout = () => {
-    console.log('Logging out user');
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   return (

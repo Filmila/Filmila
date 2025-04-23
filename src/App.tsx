@@ -1,35 +1,18 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import Login from './pages/auth/Login'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import AdminLayout from './components/admin/AdminLayout'
-import FilmsManagement from './pages/admin/FilmsManagement'
-import UserManagement from './pages/admin/UserManagement'
-import Settings from './pages/admin/Settings'
-import UploadFilm from './pages/filmmaker/UploadFilm'
-import Home from './pages/Home'
-import TestConnection from './pages/TestConnection'
-import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import Home from './pages/Home';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import TestConnection from './pages/TestConnection';
+import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard';
+import UploadFilm from './pages/filmmaker/UploadFilm';
+import FilmsManagement from './pages/admin/FilmsManagement';
+import Settings from './pages/admin/Settings';
+import AdminLayout from './components/layout/AdminLayout';
+import ProtectedRoute from './components/ProtectedRoute';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'ADMIN' | 'FILMMAKER' | 'VIEWER' }> = ({ 
-  children, 
-  requiredRole 
-}) => {
-  const { isAuthenticated, user } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const App: React.FC = () => {
+function App() {
   return (
     <AuthProvider>
       <Router>
@@ -38,6 +21,7 @@ const App: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/test-connection" element={<TestConnection />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           
           {/* Admin Routes */}
           <Route path="/admin/*" element={
@@ -45,7 +29,6 @@ const App: React.FC = () => {
               <AdminLayout>
                 <Routes>
                   <Route path="films" element={<FilmsManagement />} />
-                  <Route path="users" element={<UserManagement />} />
                   <Route path="settings" element={<Settings />} />
                   <Route index element={<Navigate to="films" replace />} />
                 </Routes>
@@ -69,7 +52,7 @@ const App: React.FC = () => {
         </Routes>
       </Router>
     </AuthProvider>
-  )
+  );
 }
 
-export default App 
+export default App; 
