@@ -18,10 +18,17 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Validate email format with a more permissive regex
+      const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
       if (!emailRegex.test(formData.email)) {
-        toast.error('Please enter a valid email address');
+        toast.error('Please enter a valid email address (e.g., user@gmail.com)', { duration: 5000 });
+        setIsLoading(false);
+        return;
+      }
+
+      // Suggest common email domains if using test.com
+      if (formData.email.endsWith('@test.com')) {
+        toast.error('Please use a valid email domain (e.g., @gmail.com, @outlook.com, @yahoo.com)', { duration: 5000 });
         setIsLoading(false);
         return;
       }
@@ -113,6 +120,8 @@ export default function Register() {
         toast.error('Password must be at least 6 characters long');
       } else if (error.message.includes('rate limit')) {
         toast.error('Too many attempts. Please try again later.');
+      } else if (error.message.includes('valid email')) {
+        toast.error('Please use a valid email address (e.g., user@gmail.com)', { duration: 5000 });
       } else {
         toast.error(
           error.message || 'Registration failed. Please try again.',
@@ -139,7 +148,7 @@ export default function Register() {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            You'll need to verify your email after registration
+            Please use a valid email address (e.g., name@gmail.com)
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -155,7 +164,7 @@ export default function Register() {
                 autoComplete="email"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                placeholder="Email address (e.g., name@gmail.com)"
                 value={formData.email}
                 onChange={handleChange}
               />
