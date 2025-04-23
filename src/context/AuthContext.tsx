@@ -82,12 +82,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Starting login process...');
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Login error:', error);
+        throw error;
+      }
+
+      if (!data.user) {
+        console.error('No user data received');
+        return false;
+      }
+
+      console.log('Auth successful, fetching profile...');
+      await fetchUserProfile(data.user);
       return true;
     } catch (error) {
       console.error('Login error:', error);

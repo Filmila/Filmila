@@ -30,6 +30,7 @@ export default function Login() {
         console.log('User role:', userRole);
 
         if (userRole === 'ADMIN') {
+          console.log('Navigating to admin dashboard...');
           navigate('/admin/films');
         } else if (userRole === 'FILMMAKER') {
           console.log('Navigating to filmmaker dashboard...');
