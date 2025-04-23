@@ -10,11 +10,23 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
   const { isAuthenticated, user } = useAuth();
 
+  console.log('ProtectedRoute check:', {
+    isAuthenticated,
+    userRole: user?.role,
+    requiredRole,
+    user
+  });
+
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole && user?.role?.toUpperCase() !== requiredRole?.toUpperCase()) {
+    console.log('Role mismatch:', {
+      userRole: user?.role?.toUpperCase(),
+      requiredRole: requiredRole?.toUpperCase()
+    });
     return <Navigate to="/" replace />;
   }
 

@@ -26,11 +26,16 @@ export default function Login() {
         console.log('User data:', userData);
 
         // Navigate based on role
-        if (userData.role === 'ADMIN') {
+        const userRole = userData.role?.toUpperCase();
+        console.log('User role:', userRole);
+
+        if (userRole === 'ADMIN') {
           navigate('/admin/films');
-        } else if (userData.role === 'FILMMAKER') {
+        } else if (userRole === 'FILMMAKER') {
+          console.log('Navigating to filmmaker dashboard...');
           navigate('/filmmaker/dashboard');
         } else {
+          console.log('Navigating to browse...');
           navigate('/browse');
         }
       } else {
