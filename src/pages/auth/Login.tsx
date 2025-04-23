@@ -102,6 +102,24 @@ export default function Login() {
               Sign in
             </button>
           </div>
+
+          <div className="text-center space-y-4">
+            <a
+              href="/register"
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Don't have an account? Register
+            </a>
+            <div>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="font-medium text-gray-600 hover:text-gray-500"
+              >
+                Back to Homepage
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
