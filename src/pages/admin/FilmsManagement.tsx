@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Film } from '../../types';
 import { filmService } from '../../services/filmService';
+import { supabase } from '../../config/supabase';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
 type SortOrder = 'asc' | 'desc';
@@ -17,30 +18,120 @@ interface FilterPreferences {
 
 const FilmsManagement: React.FC = () => {
   const [films, setFilms] = useState<Film[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selected_films, setSelectedFilms] = useState<Set<string>>(new Set());
   const [confirm_action, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
   const [is_reject_modal_open, setIsRejectModalOpen] = useState(false);
   const [selected_film, setSelectedFilm] = useState<Film | null>(null);
   const [rejection_note, setRejectionNote] = useState('');
   const currentAdmin = 'Admin User'; // This should come from your auth context
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [sortField, setSortField] = useState<string>('upload_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Load saved filters from localStorage
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('filmsFilters');
+    if (savedFilters) {
+      const { status, start, end, sort, order } = JSON.parse(savedFilters);
+      setSelectedStatus(status || 'all');
+      setStartDate(start || '');
+      setEndDate(end || '');
+      setSortField(sort || 'upload_date');
+      setSortOrder(order || 'desc');
+    }
+  }, []);
+
+  // Save filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('filmsFilters', JSON.stringify({
+      status: selectedStatus,
+      start: startDate,
+      end: endDate,
+      sort: sortField,
+      order: sortOrder
+    }));
+  }, [selectedStatus, startDate, endDate, sortField, sortOrder]);
 
   useEffect(() => {
-    const fetchFilms = async () => {
-      try {
-        const data = await filmService.getFilms();
-        setFilms(data);
-      } catch (err) {
-        setError('Failed to fetch films');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFilms();
-  }, []);
+  }, [selectedStatus, startDate, endDate, sortField, sortOrder]);
+
+  const fetchFilms = async () => {
+    try {
+      let query = supabase
+        .from('films')
+        .select('*');
+
+      if (selectedStatus !== 'all') {
+        query = query.eq('status', selectedStatus);
+      }
+
+      if (startDate) {
+        query = query.gte('upload_date', startDate);
+      }
+
+      if (endDate) {
+        query = query.lte('upload_date', endDate);
+      }
+
+      query = query.order(sortField, { ascending: sortOrder === 'asc' });
+
+      const { data, error: fetchError } = await query;
+
+      if (fetchError) throw fetchError;
+      setFilms(data || []);
+
+    } catch (error) {
+      console.error('Error fetching films:', error);
+    }
+  };
+
+  const handleStatusChange = (status: string) => {
+    setSelectedStatus(status);
+  };
+
+  const handleDateChange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  const handleSort = (field: string) => {
+    if (field === sortField) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Title', 'Filmmaker', 'Status', 'Upload Date', 'Views', 'Revenue'];
+    const csvData = films.map(film => [
+      film.title,
+      film.filmmaker,
+      film.status,
+      new Date(film.upload_date).toLocaleDateString(),
+      film.views,
+      film.revenue
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `films_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Load saved preferences from localStorage
   const loadPreferences = (): FilterPreferences => {
@@ -127,14 +218,6 @@ const FilmsManagement: React.FC = () => {
     return result;
   }, [films, preferences]);
 
-  const handleSort = (field: SortField) => {
-    if (preferences.sort_field === field) {
-      setPreferences(prev => ({ ...prev, sort_order: prev.sort_order === 'asc' ? 'desc' : 'asc' }));
-    } else {
-      setPreferences(prev => ({ ...prev, sort_field: field, sort_order: 'asc' }));
-    }
-  };
-
   const getSortIcon = (field: SortField) => {
     if (preferences.sort_field !== field) return null;
     return preferences.sort_order === 'asc' ? (
@@ -175,15 +258,13 @@ const FilmsManagement: React.FC = () => {
   const confirmBulkAction = async () => {
     if (confirm_action === 'approve') {
       try {
-        const now = new Date().toISOString();
         const updatedFilms: Film[] = await Promise.all(Array.from(selected_films).map(async id => {
           const updatedFilm = await filmService.updateFilmStatus(id, 'approved', undefined);
           return updatedFilm;
         }));
         setFilms(updatedFilms);
       } catch (err) {
-        setError('Failed to bulk approve films');
-        console.error(err);
+        console.error('Failed to bulk approve films:', err);
       }
     } else if (confirm_action === 'reject') {
       setSelectedFilm(films.find(f => f.id === Array.from(selected_films)[0]) || null);
@@ -198,8 +279,7 @@ const FilmsManagement: React.FC = () => {
       await filmService.deleteFilm(id);
       setFilms(films.filter(film => film.id !== id));
     } catch (err) {
-      setError('Failed to delete film');
-      console.error(err);
+      console.error('Failed to delete film:', err);
     }
   };
 
@@ -213,8 +293,7 @@ const FilmsManagement: React.FC = () => {
       const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved', undefined);
       setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
     } catch (err) {
-      setError('Failed to approve film');
-      console.error(err);
+      console.error('Failed to approve film:', err);
     }
   };
 
@@ -224,14 +303,12 @@ const FilmsManagement: React.FC = () => {
       setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
       setIsRejectModalOpen(true);
     } catch (err) {
-      setError('Failed to reject film');
-      console.error(err);
+      console.error('Failed to reject film:', err);
     }
   };
 
   const handleSaveRejection = () => {
     if (selected_film) {
-      const now = new Date().toISOString();
       const updatedFilms: Film[] = films.map(f => {
         if (selected_films.has(f.id) || f.id === selected_film.id) {
           return {
@@ -241,7 +318,7 @@ const FilmsManagement: React.FC = () => {
             last_action: {
               type: 'reject' as const,
               admin: currentAdmin,
-              date: now
+              date: new Date().toISOString()
             }
           };
         }
@@ -277,35 +354,6 @@ const FilmsManagement: React.FC = () => {
           </span>
         );
     }
-  };
-
-  // Export to CSV
-  const exportToCSV = () => {
-    const headers = ['Title', 'Filmmaker', 'Upload Date', 'Status', 'Rejection Note', 'Last Action', 'Admin'];
-    const rows = filteredAndSortedFilms.map(film => [
-      film.title,
-      film.filmmaker,
-      film.upload_date,
-      film.status,
-      film.rejection_note || '',
-      film.last_action ? `${film.last_action.type} on ${new Date(film.last_action.date).toLocaleString()}` : '',
-      film.last_action?.admin || ''
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `films_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const [is_confirm_modal_open, setIsConfirmModalOpen] = useState(false);
@@ -361,8 +409,8 @@ const FilmsManagement: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <select
-              value={preferences.status_filter}
-              onChange={(e) => updatePreferences({ status_filter: e.target.value })}
+              value={selectedStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             >
               <option value="all">All Status</option>
@@ -379,8 +427,8 @@ const FilmsManagement: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">Start Date</label>
             <input
               type="date"
-              value={preferences.start_date}
-              onChange={(e) => updatePreferences({ start_date: e.target.value })}
+              value={startDate}
+              onChange={(e) => handleDateChange(e.target.value, endDate)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
@@ -388,8 +436,8 @@ const FilmsManagement: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700">End Date</label>
             <input
               type="date"
-              value={preferences.end_date}
-              onChange={(e) => updatePreferences({ end_date: e.target.value })}
+              value={endDate}
+              onChange={(e) => handleDateChange(startDate, e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
           </div>
