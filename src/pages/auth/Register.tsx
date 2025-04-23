@@ -75,7 +75,8 @@ export default function Register() {
 
       console.log('Supabase auth response:', {
         user: authData?.user ? 'User created' : 'No user created',
-        error: authError ? authError.message : 'No error'
+        error: authError ? authError.message : 'No error',
+        session: authData?.session ? 'Session created' : 'No session'
       });
 
       if (authError) {
@@ -116,7 +117,7 @@ export default function Register() {
 
       // Show success message
       toast.success(
-        'Registration successful! Please check your email to confirm your account.',
+        'Registration successful! You can now log in.',
         { duration: 5000 }
       );
 
@@ -135,15 +136,15 @@ export default function Register() {
 
     } catch (error: any) {
       console.error('Registration error:', error);
-      setDebugInfo(`Error: ${error.message}`);
+      setDebugInfo(`Error: ${error.message || 'Unknown error occurred'}`);
       
-      if (error.message.includes('User already registered')) {
+      if (error.message?.includes('User already registered')) {
         toast.error('This email is already registered. Please try logging in instead.');
-      } else if (error.message.includes('Password should be at least')) {
+      } else if (error.message?.includes('Password should be at least')) {
         toast.error('Password must be at least 6 characters long');
-      } else if (error.message.includes('rate limit')) {
+      } else if (error.message?.includes('rate limit')) {
         toast.error('Too many attempts. Please try again later.');
-      } else if (error.message.includes('valid email')) {
+      } else if (error.message?.includes('valid email')) {
         toast.error('Please use a valid email address (e.g., user@gmail.com)', { duration: 5000 });
       } else {
         toast.error(
