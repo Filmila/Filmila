@@ -40,47 +40,84 @@ export default function Register() {
         return;
       }
 
+      console.log('Starting registration process...');
+
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            role: formData.role
+          }
         }
       });
+
+      console.log('Supabase auth response:', { authData, authError });
 
       if (authError) {
         console.error('Supabase auth error:', authError);
         throw authError;
       }
 
-      if (authData.user) {
-        // Create profile with role
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              role: formData.role
-            }
-          ]);
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw profileError;
-        }
-
-        toast.success('Registration successful! Please check your email to confirm your account.');
-        navigate('/login');
+      if (!authData.user) {
+        throw new Error('No user data received from registration');
       }
+
+      console.log('User created successfully:', authData.user);
+
+      // Create profile with role
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: authData.user.id,
+            role: formData.role,
+            email: formData.email
+          }
+        ]);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Profile created successfully');
+
+      // Show success message
+      toast.success(
+        'Registration successful! Please check your email to confirm your account.',
+        { duration: 5000 }
+      );
+
+      // Clear form
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'VIEWER'
+      });
+
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+
     } catch (error: any) {
       console.error('Registration error:', error);
+      
       if (error.message.includes('User already registered')) {
         toast.error('This email is already registered. Please try logging in instead.');
       } else if (error.message.includes('Password should be at least')) {
         toast.error('Password must be at least 6 characters long');
+      } else if (error.message.includes('rate limit')) {
+        toast.error('Too many attempts. Please try again later.');
       } else {
-        toast.error(error.message || 'Registration failed. Please try again.');
+        toast.error(
+          error.message || 'Registration failed. Please try again.',
+          { duration: 4000 }
+        );
       }
     } finally {
       setIsLoading(false);
@@ -101,6 +138,9 @@ export default function Register() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            You'll need to verify your email after registration
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
