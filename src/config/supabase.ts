@@ -53,7 +53,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 (async () => {
   try {
     // Test basic connection
-    const { data, error } = await supabase.from('profiles').select('count', { count: 'exact' });
+    const { error } = await supabase.from('profiles').select('count', { count: 'exact' });
     if (error) throw error;
     console.log('Supabase connection successful');
 
