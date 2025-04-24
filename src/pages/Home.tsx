@@ -3,13 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Film } from '../types';
 import { supabase } from '../config/supabase';
-import { StarIcon, ClockIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { StarIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
   const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
-  const [continueWatching, setContinueWatching] = useState<Film[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -19,7 +18,7 @@ const Home = () => {
           .from('films')
           .select('*')
           .eq('status', 'approved')
-          .order('rating', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(6);
 
         if (error) throw error;
@@ -57,7 +56,7 @@ const Home = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
             <StarIcon className="h-5 w-5 text-yellow-400" />
-            <span className="text-sm text-gray-600">{film.rating || 'N/A'}</span>
+            <span className="text-sm text-gray-600">N/A</span>
           </div>
           <button className="text-purple-600 hover:text-purple-800">
             <BookmarkIcon className="h-5 w-5" />
@@ -156,20 +155,6 @@ const Home = () => {
           )}
         </div>
       </section>
-
-      {/* Continue Watching Section */}
-      {isAuthenticated && continueWatching.length > 0 && (
-        <section className="py-16 bg-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Continue Watching</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {continueWatching.map((film) => (
-                <FilmCard key={film.id} film={film} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   );
 };

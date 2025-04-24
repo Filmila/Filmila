@@ -2,7 +2,6 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
-import { FilmIcon, UserIcon } from '@heroicons/react/24/outline';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
 
