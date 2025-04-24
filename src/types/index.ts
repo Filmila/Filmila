@@ -3,12 +3,30 @@ export interface Film {
   title: string;
   description: string;
   filmmaker: string;
+  upload_date: string;
   status: 'pending' | 'approved' | 'rejected';
   views: number;
   revenue: number;
-  upload_date: string;
+  thumbnail_url?: string;
   video_url: string;
-  thumbnail_url: string;
+  rejection_note?: string;
+  last_action?: {
+    type: 'approve' | 'reject';
+    admin: string;
+    date: string;
+  };
+}
+
+export interface FilmProgress {
+  film: Film;
+  progress: number;
+  last_watched: string;
+}
+
+export interface RatedFilm {
+  film: Film;
+  rating: number;
+  rated_at: string;
 }
 
 export interface User {

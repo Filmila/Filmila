@@ -10,9 +10,15 @@ import UploadFilm from './pages/filmmaker/UploadFilm';
 import FilmsManagement from './pages/admin/FilmsManagement';
 import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
+import ViewerLayout from './components/layout/ViewerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import ViewerDashboard from './pages/viewer/ViewerDashboard';
+import ViewerSettings from './pages/viewer/ViewerSettings';
+import MyFilms from './pages/viewer/MyFilms';
+import ContinueWatching from './pages/viewer/ContinueWatching';
+import Watchlist from './pages/viewer/Watchlist';
+import Favorites from './pages/viewer/Favorites';
 
 function App() {
   return (
@@ -54,10 +60,17 @@ function App() {
             {/* Viewer Routes */}
             <Route path="/viewer/*" element={
               <ProtectedRoute requiredRole="VIEWER">
-                <Routes>
-                  <Route path="dashboard" element={<ViewerDashboard />} />
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Routes>
+                <ViewerLayout>
+                  <Routes>
+                    <Route path="dashboard" element={<ViewerDashboard />} />
+                    <Route path="my-films" element={<MyFilms />} />
+                    <Route path="continue-watching" element={<ContinueWatching />} />
+                    <Route path="watchlist" element={<Watchlist />} />
+                    <Route path="favorites" element={<Favorites />} />
+                    <Route path="settings" element={<ViewerSettings />} />
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                  </Routes>
+                </ViewerLayout>
               </ProtectedRoute>
             } />
 
