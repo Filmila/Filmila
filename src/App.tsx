@@ -12,6 +12,7 @@ import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
+import ViewerDashboard from './pages/viewer/ViewerDashboard';
 
 function App() {
   return (
@@ -45,6 +46,16 @@ function App() {
                 <Routes>
                   <Route path="dashboard" element={<FilmmakerDashboard />} />
                   <Route path="upload" element={<UploadFilm />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Routes>
+              </ProtectedRoute>
+            } />
+
+            {/* Viewer Routes */}
+            <Route path="/viewer/*" element={
+              <ProtectedRoute requiredRole="VIEWER">
+                <Routes>
+                  <Route path="dashboard" element={<ViewerDashboard />} />
                   <Route index element={<Navigate to="dashboard" replace />} />
                 </Routes>
               </ProtectedRoute>
