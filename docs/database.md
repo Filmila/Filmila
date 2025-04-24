@@ -17,6 +17,50 @@ create table public.profiles (
 );
 ```
 
+## Films Table
+
+```sql
+create table public.films (
+    id uuid default uuid_generate_v4() primary key,
+    title text not null,
+    description text,
+    filmmaker text references profiles(email),
+    status text check (status in ('pending', 'approved', 'rejected')) default 'pending',
+    views integer default 0,
+    revenue decimal(10,2) default 0,
+    upload_date timestamp with time zone default now(),
+    video_url text,
+    thumbnail_url text
+);
+
+-- Enable RLS
+alter table public.films enable row level security;
+
+-- Allow filmmakers to read their own films
+create policy "Filmmakers can view their own films"
+    on public.films
+    for select
+    using (filmmaker = auth.jwt() ->> 'email');
+
+-- Allow filmmakers to insert their own films
+create policy "Filmmakers can upload films"
+    on public.films
+    for insert
+    with check (filmmaker = auth.jwt() ->> 'email');
+
+-- Allow admins to read all films
+create policy "Admins can view all films"
+    on public.films
+    for select
+    using (auth.jwt() ->> 'role' = 'ADMIN');
+
+-- Allow admins to update film status
+create policy "Admins can update film status"
+    on public.films
+    for update
+    using (auth.jwt() ->> 'role' = 'ADMIN');
+```
+
 ### Row Level Security Policies
 
 ```sql
