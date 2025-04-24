@@ -106,7 +106,6 @@ export default function Register() {
             role: formData.role,
             email: formData.email,
             display_name: formData.email.split('@')[0],
-            phone: null,
             providers: [],
             provider_type: 'email',
             created_at: new Date().toISOString(),
