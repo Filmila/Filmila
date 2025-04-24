@@ -16,7 +16,7 @@ const Home = () => {
           .from('films')
           .select('*')
           .eq('status', 'approved')
-          .order('created_at', { ascending: false })
+          .order('upload_date', { ascending: false })
           .limit(6);
 
         if (error) throw error;
