@@ -14,11 +14,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
+    detectSessionInUrl: false,
     storage: window.localStorage,
     storageKey: 'filmila-auth-token',
-    debug: true
+    debug: false
   },
   global: {
     headers: {
@@ -30,22 +29,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   realtime: {
     params: {
-      eventsPerSecond: 2
+      eventsPerSecond: 1
     }
   }
 });
 
 // Add connection health check and session management
 supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth state changed:', event);
-  
   if (event === 'SIGNED_OUT') {
     console.log('User signed out, clearing local storage');
     localStorage.clear();
   }
   
-  if (event === 'SIGNED_IN') {
-    console.log('User signed in:', session?.user?.email);
+  if (event === 'SIGNED_IN' && session?.user) {
+    console.log('User signed in:', session.user.email);
   }
 });
 
@@ -71,7 +68,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Export a function to check connection health
 export const checkSupabaseHealth = async () => {
   try {
-    const { error } = await supabase.from('profiles').select('count', { count: 'exact' });
+    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
     return !error;
   } catch {
     return false;

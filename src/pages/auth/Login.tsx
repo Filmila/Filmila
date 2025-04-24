@@ -56,87 +56,89 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const startTime = Date.now();
     try {
-      console.log('Login: Starting login process...');
+      console.log('Login: Starting login process...', new Date().toISOString());
       console.log('Login: Attempting login with:', formData.email);
       
       // Add loading state feedback
-      const toastId = toast.loading('Logging in...');
+      const toastId = toast.loading('Logging in...', { duration: 10000 }); // Set max duration
       
       // Test invalid credentials
       console.log('Login: Sending credentials to AuthContext...');
-      const { data, error } = await login(formData.email, formData.password);
+      const authResult = await Promise.race([
+        login(formData.email, formData.password),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Login timeout')), 10000)
+        )
+      ]);
       
-      console.log('Login: Response received:', {
-        success: !!data?.user,
-        hasError: !!error,
-        errorMessage: error?.message,
-        userData: data?.user ? {
-          id: data.user.id,
-          email: data.user.email,
-          role: data.user.customRole
-        } : null
-      });
+      console.log('Login: Auth response time:', Date.now() - startTime, 'ms');
 
-      if (error) {
-        console.error('Login: Failed -', error.message);
-        console.error('Login: Full error object:', error);
+      if (authResult.error) {
+        console.error('Login: Failed -', authResult.error.message);
         toast.dismiss(toastId);
-        toast.error(error.message || 'Invalid email or password');
+        if (authResult.error.message.includes('timeout')) {
+          toast.error('Login is taking too long. Please try again.');
+        } else {
+          toast.error(authResult.error.message || 'Invalid email or password');
+        }
         return;
       }
 
-      if (!data?.user) {
+      if (!authResult.data?.user) {
         console.error('Login: No user data received');
-        console.error('Login: Full response:', { data, error });
         toast.dismiss(toastId);
         toast.error('Login failed. Please try again.');
         return;
       }
 
-      console.log('Login: Success, user data:', {
-        id: data.user.id,
-        email: data.user.email,
-        role: data.user.customRole
-      });
+      console.log('Login: Success, user data received in:', Date.now() - startTime, 'ms');
       
       // Fetch user profile to get role
-      console.log('Login: Fetching profile for user ID:', data.user.id);
-      let profileResult = await supabase
-        .from('profiles')
-        .select('role, id, email')  // Select only needed fields
-        .eq('id', data.user.id)
-        .single();
+      console.log('Login: Fetching profile for user ID:', authResult.data.user.id);
+      const profileStartTime = Date.now();
+      
+      type ProfileResponse = {
+        data: { role: string; id: string } | null;
+        error: { message?: string; code?: string } | null;
+      };
 
-      console.log('Login: Profile query result:', {
-        success: !!profileResult.data,
-        hasError: !!profileResult.error,
-        error: profileResult.error
-      });
+      const profileResult = await Promise.race([
+        supabase
+          .from('profiles')
+          .select('role, id')
+          .eq('id', authResult.data.user.id)
+          .single(),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+        )
+      ]) as ProfileResponse;
+
+      console.log('Login: Profile fetch time:', Date.now() - profileStartTime, 'ms');
 
       if (profileResult.error) {
         console.error('Login: Error fetching profile -', profileResult.error);
-        
-        // Check if it's a permissions error
-        if (profileResult.error.code === 'PGRST301') {
-          toast.dismiss(toastId);
-          toast.error('Access denied. Please verify your email first.');
-          return;
-        }
-
         toast.dismiss(toastId);
-        toast.error('Error loading user profile. Please try again.');
+        
+        if (profileResult.error.message?.includes('timeout')) {
+          toast.error('Profile loading timed out. Please try again.');
+        } else if (profileResult.error.code === 'PGRST301') {
+          toast.error('Please verify your email first.');
+        } else {
+          toast.error('Error loading profile. Please try again.');
+        }
         return;
       }
 
       if (!profileResult.data) {
         console.error('Login: No profile data available');
         toast.dismiss(toastId);
-        toast.error('User profile not found. Please register first.');
+        toast.error('Profile not found. Please register first.');
         return;
       }
 
-      console.log('Login: Profile loaded successfully');
+      console.log('Login: Total process time:', Date.now() - startTime, 'ms');
       
       // Navigate based on role
       const userRole = profileResult.data.role.toUpperCase();
@@ -145,29 +147,32 @@ export default function Login() {
       toast.dismiss(toastId);
       toast.success('Login successful!');
 
-      if (userRole === 'ADMIN') {
-        console.log('Login: Navigating to admin dashboard');
-        navigate('/admin/films');
-      } else if (userRole === 'FILMMAKER') {
-        console.log('Login: Navigating to filmmaker dashboard');
-        navigate('/filmmaker/dashboard');
-      } else if (userRole === 'VIEWER') {
-        console.log('Login: Navigating to viewer dashboard');
-        navigate('/viewer/dashboard');
-      } else {
-        console.error('Login: Invalid role -', userRole);
-        toast.error('Invalid user role. Please contact support.');
+      // Immediate navigation
+      switch(userRole) {
+        case 'ADMIN':
+          navigate('/admin/films');
+          break;
+        case 'FILMMAKER':
+          navigate('/filmmaker/dashboard');
+          break;
+        case 'VIEWER':
+          navigate('/viewer/dashboard');
+          break;
+        default:
+          toast.error('Invalid user role. Please contact support.');
       }
     } catch (error) {
-      console.error('Login: Unexpected error during login:', error);
+      const totalTime = Date.now() - startTime;
+      console.error('Login: Error after', totalTime, 'ms:', error);
       console.error('Login: Full error object:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
+        time: totalTime,
         error
       });
+      
       toast.dismiss();
       if (error instanceof Error && error.message.includes('timeout')) {
-        toast.error('Login timed out. Please try again.');
+        toast.error('Login process timed out. Please try again.');
       } else {
         toast.error('An unexpected error occurred. Please try again.');
       }
