@@ -1,8 +1,21 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const { isAuthenticated, user } = useAuth();
+
+  // Redirect based on role
+  if (isAuthenticated && user) {
+    console.log('Home: Authenticated user with role:', user.role);
+    if (user.role === 'FILMMAKER') {
+      console.log('Home: Redirecting to filmmaker dashboard');
+      return <Navigate to="/filmmaker/dashboard" replace />;
+    }
+    if (user.role === 'ADMIN') {
+      console.log('Home: Redirecting to admin dashboard');
+      return <Navigate to="/admin/films" replace />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -21,7 +34,7 @@ const Home = () => {
               <div className="space-x-4">
                 {user?.role === 'FILMMAKER' && (
                   <Link
-                    to="/upload"
+                    to="/filmmaker/upload"
                     className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
                     Upload Film

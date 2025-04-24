@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -14,37 +14,40 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Attempting login with:', formData.email);
+      console.log('Login: Attempting login with:', formData.email);
       const success = await login(formData.email, formData.password);
       
       if (success) {
-        console.log('Login successful, redirecting...');
+        console.log('Login: Success, showing toast');
         toast.success('Login successful!');
         
-        // Get user data from localStorage
+        // Get fresh user data
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('User data:', userData);
+        console.log('Login: User data after login:', userData);
 
         // Navigate based on role
         const userRole = userData.role?.toUpperCase();
-        console.log('User role:', userRole);
+        console.log('Login: User role for navigation:', userRole);
 
-        if (userRole === 'ADMIN') {
-          console.log('Navigating to admin dashboard...');
-          navigate('/admin/films');
-        } else if (userRole === 'FILMMAKER') {
-          console.log('Navigating to filmmaker dashboard...');
-          navigate('/filmmaker/dashboard');
-        } else {
-          console.log('Navigating to browse...');
-          navigate('/browse');
-        }
+        // Small delay to ensure auth context is updated
+        setTimeout(() => {
+          if (userRole === 'ADMIN') {
+            console.log('Login: Navigating to admin dashboard');
+            navigate('/admin/films');
+          } else if (userRole === 'FILMMAKER') {
+            console.log('Login: Navigating to filmmaker dashboard');
+            navigate('/filmmaker/dashboard');
+          } else {
+            console.log('Login: Navigating to browse');
+            navigate('/browse');
+          }
+        }, 100);
       } else {
-        console.log('Login failed: Invalid credentials');
+        console.log('Login: Failed - Invalid credentials');
         toast.error('Invalid email or password');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login: Error during login:', error);
       toast.error('Login failed. Please try again.');
     }
   };
