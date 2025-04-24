@@ -30,32 +30,69 @@ export default function Login() {
         return;
       }
 
-      console.log('Login: Success, fetching user profile');
+      console.log('Login: Success, user data:', data.user);
+      console.log('Login: User ID:', data.user.id);
       
       // Fetch user profile to get role
-      const { data: profileData, error: profileError } = await supabase
+      console.log('Login: Fetching profile for user ID:', data.user.id);
+      let profileResult = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')  // Select all fields for debugging
         .eq('id', data.user.id)
         .single();
 
-      if (profileError) {
-        console.error('Login: Error fetching profile -', profileError);
-        toast.error('Error loading user profile');
-        return;
+      console.log('Login: Profile query result:', profileResult);
+
+      if (profileResult.error) {
+        console.error('Login: Error fetching profile -', profileResult.error);
+        
+        // Check if profile exists
+        const { count, error: countError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact' })
+          .eq('id', data.user.id);
+          
+        console.log('Login: Profile count check:', { count, countError });
+        
+        // If profile doesn't exist, create one
+        if (count === 0) {
+          console.log('Login: Creating missing profile for user');
+          profileResult = await supabase
+            .from('profiles')
+            .insert([{
+              id: data.user.id,
+              email: data.user.email,
+              role: 'VIEWER',  // Default role
+              created_at: new Date().toISOString(),
+              last_sign_in_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+            
+          console.log('Login: Profile creation result:', profileResult);
+          
+          if (profileResult.error) {
+            console.error('Login: Failed to create profile -', profileResult.error);
+            toast.error('Error creating user profile');
+            return;
+          }
+        } else {
+          toast.error('Error loading user profile');
+          return;
+        }
       }
 
-      if (!profileData) {
+      if (!profileResult.data) {
         console.error('Login: No profile found');
         toast.error('User profile not found');
         return;
       }
 
-      console.log('Login: Profile loaded, role:', profileData.role);
+      console.log('Login: Profile loaded:', profileResult.data);
       toast.success('Login successful!');
 
       // Navigate based on role
-      const userRole = profileData.role.toUpperCase();
+      const userRole = profileResult.data.role.toUpperCase();
       console.log('Login: Navigating based on role:', userRole);
 
       if (userRole === 'ADMIN') {
