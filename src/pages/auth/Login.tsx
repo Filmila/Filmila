@@ -32,7 +32,7 @@ export default function Login() {
         // Small delay to ensure auth context is updated
         setTimeout(() => {
           if (userRole === 'ADMIN') {
-            console.log('Login: Navigating to admin dashboard');
+            console.log('Login: Navigating to films management');
             navigate('/admin/films');
           } else if (userRole === 'FILMMAKER') {
             console.log('Login: Navigating to filmmaker dashboard');

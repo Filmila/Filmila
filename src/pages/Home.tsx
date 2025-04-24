@@ -12,7 +12,7 @@ const Home = () => {
       return <Navigate to="/filmmaker/dashboard" replace />;
     }
     if (user.role === 'ADMIN') {
-      console.log('Home: Redirecting to admin dashboard');
+      console.log('Home: Redirecting to admin films management');
       return <Navigate to="/admin/films" replace />;
     }
   }
@@ -45,7 +45,7 @@ const Home = () => {
                     to="/admin/films"
                     className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
-                    Admin Dashboard
+                    Films Management
                   </Link>
                 )}
                 <Link
