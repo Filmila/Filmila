@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../config/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,36 +16,57 @@ export default function Login() {
     e.preventDefault();
     try {
       console.log('Login: Attempting login with:', formData.email);
-      const success = await login(formData.email, formData.password);
+      const { data, error } = await login(formData.email, formData.password);
       
-      if (success) {
-        console.log('Login: Success, showing toast');
-        toast.success('Login successful!');
-        
-        // Get fresh user data
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('Login: User data after login:', userData);
+      if (error) {
+        console.error('Login: Failed -', error.message);
+        toast.error(error.message || 'Invalid email or password');
+        return;
+      }
 
-        // Navigate based on role
-        const userRole = userData.role?.toUpperCase();
-        console.log('Login: User role for navigation:', userRole);
+      if (!data?.user) {
+        console.error('Login: No user data received');
+        toast.error('Login failed. Please try again.');
+        return;
+      }
 
-        // Small delay to ensure auth context is updated
-        setTimeout(() => {
-          if (userRole === 'ADMIN') {
-            console.log('Login: Navigating to films management');
-            navigate('/admin/films');
-          } else if (userRole === 'FILMMAKER') {
-            console.log('Login: Navigating to filmmaker dashboard');
-            navigate('/filmmaker/dashboard');
-          } else {
-            console.log('Login: Navigating to browse');
-            navigate('/browse');
-          }
-        }, 100);
+      console.log('Login: Success, fetching user profile');
+      
+      // Fetch user profile to get role
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Login: Error fetching profile -', profileError);
+        toast.error('Error loading user profile');
+        return;
+      }
+
+      if (!profileData) {
+        console.error('Login: No profile found');
+        toast.error('User profile not found');
+        return;
+      }
+
+      console.log('Login: Profile loaded, role:', profileData.role);
+      toast.success('Login successful!');
+
+      // Navigate based on role
+      const userRole = profileData.role.toUpperCase();
+      console.log('Login: Navigating based on role:', userRole);
+
+      if (userRole === 'ADMIN') {
+        navigate('/admin/films');
+      } else if (userRole === 'FILMMAKER') {
+        navigate('/filmmaker/dashboard');
+      } else if (userRole === 'VIEWER') {
+        navigate('/viewer/dashboard');
       } else {
-        console.log('Login: Failed - Invalid credentials');
-        toast.error('Invalid email or password');
+        console.error('Login: Invalid role -', userRole);
+        toast.error('Invalid user role');
       }
     } catch (error) {
       console.error('Login: Error during login:', error);
