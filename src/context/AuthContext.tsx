@@ -103,19 +103,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('AuthContext: Starting signIn process...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
+      console.log('AuthContext: SignIn response:', { data, error });
+      
       if (data.user) {
+        console.log('AuthContext: User authenticated, updating with role...');
         const customUser = { ...data.user };
         await updateUserWithRole(customUser);
+        console.log('AuthContext: User updated with role:', customUser);
         return { data: { user: customUser as CustomUser }, error };
       }
       
+      console.log('AuthContext: No user data in response');
       return { data: null, error };
     } catch (error) {
+      console.error('AuthContext: Error in signIn:', error);
       return { data: null, error: error as Error };
     }
   };

@@ -15,17 +15,26 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      console.log('Login: Starting login process...');
       console.log('Login: Attempting login with:', formData.email);
+      
+      // Add loading state feedback
+      toast.loading('Logging in...');
+      
       const { data, error } = await login(formData.email, formData.password);
       
+      console.log('Login: Initial response:', { data, error });
+
       if (error) {
         console.error('Login: Failed -', error.message);
+        toast.dismiss();
         toast.error(error.message || 'Invalid email or password');
         return;
       }
 
       if (!data?.user) {
         console.error('Login: No user data received');
+        toast.dismiss();
         toast.error('Login failed. Please try again.');
         return;
       }
@@ -64,7 +73,7 @@ export default function Login() {
             .insert([{
               id: data.user.id,
               email: data.user.email,
-              role: 'FILMMAKER',  // Changed from VIEWER to FILMMAKER
+              role: 'FILMMAKER',  // Default role
               created_at: new Date().toISOString(),
               last_sign_in_at: new Date().toISOString()
             }])
@@ -75,10 +84,12 @@ export default function Login() {
           
           if (profileResult.error) {
             console.error('Login: Failed to create profile -', profileResult.error);
+            toast.dismiss();
             toast.error('Error creating user profile');
             return;
           }
         } else {
+          toast.dismiss();
           toast.error('Error loading user profile');
           return;
         }
@@ -86,6 +97,7 @@ export default function Login() {
 
       if (!profileResult.data) {
         console.error('Login: No profile found');
+        toast.dismiss();
         toast.error('User profile not found');
         return;
       }
@@ -96,6 +108,9 @@ export default function Login() {
       // Navigate based on role
       const userRole = profileResult.data.role.toUpperCase();
       console.log('Login: Navigating based on role:', userRole);
+
+      toast.dismiss();
+      toast.success('Login successful!');
 
       if (userRole === 'ADMIN') {
         console.log('Login: Navigating to admin dashboard');
@@ -111,8 +126,9 @@ export default function Login() {
         toast.error('Invalid user role');
       }
     } catch (error) {
-      console.error('Login: Error during login:', error);
-      toast.error('Login failed. Please try again.');
+      console.error('Login: Unexpected error during login:', error);
+      toast.dismiss();
+      toast.error('An unexpected error occurred. Please try again.');
     }
   };
 
