@@ -41,7 +41,9 @@ export default function Login() {
         .eq('id', data.user.id)
         .single();
 
-      console.log('Login: Profile query result:', profileResult);
+      console.log('Login: Full profile query result:', profileResult);
+      console.log('Login: Profile data:', profileResult.data);
+      console.log('Login: Profile error:', profileResult.error);
 
       if (profileResult.error) {
         console.error('Login: Error fetching profile -', profileResult.error);
@@ -62,7 +64,7 @@ export default function Login() {
             .insert([{
               id: data.user.id,
               email: data.user.email,
-              role: 'VIEWER',  // Default role
+              role: 'FILMMAKER',  // Changed from VIEWER to FILMMAKER
               created_at: new Date().toISOString(),
               last_sign_in_at: new Date().toISOString()
             }])
@@ -89,17 +91,20 @@ export default function Login() {
       }
 
       console.log('Login: Profile loaded:', profileResult.data);
-      toast.success('Login successful!');
-
+      console.log('Login: User role before navigation:', profileResult.data.role);
+      
       // Navigate based on role
       const userRole = profileResult.data.role.toUpperCase();
       console.log('Login: Navigating based on role:', userRole);
 
       if (userRole === 'ADMIN') {
+        console.log('Login: Navigating to admin dashboard');
         navigate('/admin/films');
       } else if (userRole === 'FILMMAKER') {
+        console.log('Login: Navigating to filmmaker dashboard');
         navigate('/filmmaker/dashboard');
       } else if (userRole === 'VIEWER') {
+        console.log('Login: Navigating to viewer dashboard');
         navigate('/viewer/dashboard');
       } else {
         console.error('Login: Invalid role -', userRole);
