@@ -11,8 +11,9 @@ const Navbar = () => {
   };
 
   const getDashboardLink = () => {
-    if (!user?.role) return '/dashboard';
-    return `/${user.role.toLowerCase()}/dashboard`;
+    if (!user?.role) return '/';
+    const role = user.role.toLowerCase();
+    return `/${role}/dashboard`;
   };
 
   return (
