@@ -32,115 +32,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string) => {
-    try {
-      console.log('fetchUserRole: Starting fetch for user:', userId);
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('fetchUserRole: Error:', error);
-        return null;
-      }
-
-      console.log('fetchUserRole: Success:', data);
-      return data?.role || null;
-    } catch (error) {
-      console.error('fetchUserRole: Error:', error);
-      return null;
-    }
-  };
-
-  const updateUserWithRole = async (authUser: User | null) => {
-    if (!authUser) {
-      console.log('updateUserWithRole: No auth user provided');
-      setUser(null);
-      return;
-    }
-
-    try {
-      console.log('updateUserWithRole: Fetching role for user:', authUser.id);
-      
-      // Wait for any pending token refresh
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        console.error('updateUserWithRole: No valid session');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', authUser.id)
-        .single();
-
-      if (error) {
-        console.error('updateUserWithRole: Error fetching role:', error);
-        // Set default role if fetch fails
-        const defaultUser: CustomUser = {
-          ...authUser,
-          customRole: 'FILMMAKER'
-        };
-        setUser(defaultUser);
-        return;
-      }
-
-      const customUser: CustomUser = {
-        ...authUser,
-        customRole: data.role
-      };
-      console.log('updateUserWithRole: Setting user with role:', customUser);
-      setUser(customUser);
-    } catch (error) {
-      console.error('updateUserWithRole: Error:', error);
-      // Set default role if there's an error
-      const defaultUser: CustomUser = {
-        ...authUser,
-        customRole: 'FILMMAKER'
-      };
-      setUser(defaultUser);
-    }
-  };
-
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
-      updateUserWithRole(session?.user ?? null);
+      if (session?.user) {
+        updateUserWithRole(session.user);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
     // Listen for changes on auth state (signed in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      await updateUserWithRole(session?.user ?? null);
+      if (session?.user) {
+        await updateUserWithRole(session.user);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const signUp = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (data.user) {
-        const customUser = { ...data.user };
-        await updateUserWithRole(customUser);
-        return { data: { user: customUser as CustomUser }, error };
-      }
-      
-      return { data: null, error };
-    } catch (error) {
-      return { data: null, error: error as Error };
-    }
-  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -247,9 +161,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signUp = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (data.user) {
+        const customUser = { ...data.user, customRole: 'FILMMAKER' };
+        setUser(customUser);
+        return { data: { user: customUser }, error };
+      }
+      
+      return { data: null, error };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+  };
+
+  const updateUserWithRole = async (authUser: User | null) => {
+    if (!authUser) {
+      console.log('updateUserWithRole: No auth user provided');
+      setUser(null);
+      return;
+    }
+
+    try {
+      console.log('updateUserWithRole: Fetching role for user:', authUser.id);
+      
+      // Wait for any pending token refresh
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.error('updateUserWithRole: No valid session');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('updateUserWithRole: Error fetching role:', error);
+        // Set default role if fetch fails
+        const defaultUser: CustomUser = {
+          ...authUser,
+          customRole: 'FILMMAKER'
+        };
+        setUser(defaultUser);
+        return;
+      }
+
+      const customUser: CustomUser = {
+        ...authUser,
+        customRole: data.role
+      };
+      console.log('updateUserWithRole: Setting user with role:', customUser);
+      setUser(customUser);
+    } catch (error) {
+      console.error('updateUserWithRole: Error:', error);
+      // Set default role if there's an error
+      const defaultUser: CustomUser = {
+        ...authUser,
+        customRole: 'FILMMAKER'
+      };
+      setUser(defaultUser);
+    }
   };
 
   const value = {
