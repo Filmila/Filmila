@@ -14,10 +14,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl: true,
+    flowType: 'pkce',
     storage: window.localStorage,
-    storageKey: 'filmila-auth-token',
-    debug: false
+    storageKey: 'filmila-auth-token'
   },
   global: {
     headers: {
@@ -26,42 +26,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   db: {
     schema: 'public'
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 1
-    }
   }
 });
 
 // Add connection health check and session management
 supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth state changed:', event, session?.user?.email);
+  
   if (event === 'SIGNED_OUT') {
     console.log('User signed out, clearing local storage');
     localStorage.clear();
   }
-  
-  if (event === 'SIGNED_IN' && session?.user) {
-    console.log('User signed in:', session.user.email);
-  }
 });
 
-// Test connection and verify auth is working
+// Test the connection immediately
 (async () => {
   try {
-    // Test basic connection
-    const { error } = await supabase.from('profiles').select('count', { count: 'exact' });
-    if (error) throw error;
-    console.log('Supabase connection successful');
-
-    // Test auth is initialized
-    const { data: authData } = await supabase.auth.getSession();
-    console.log('Auth initialized:', authData.session ? 'With session' : 'No session');
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log('Initial auth state:', session ? 'Logged in' : 'Not logged in');
     
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Supabase initialization error:', errorMessage);
-    // Don't throw, just log the error
+    if (session?.user) {
+      console.log('Current user:', session.user.email);
+    }
+  } catch (error) {
+    console.error('Error checking auth state:', error);
   }
 })();
 

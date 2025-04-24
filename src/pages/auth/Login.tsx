@@ -12,142 +12,73 @@ export default function Login() {
     password: ''
   });
 
-  // Add test sign-in function
-  const testSignIn = async (email: string, password: string) => {
-    try {
-      console.log('Test Login: Starting simple auth test...');
-      console.log('Test Login: Attempting with email:', email);
-      
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError) {
-        console.error('Test Login: Sign-in failed:', authError.message);
-        console.error('Test Login: Full error:', authError);
-        alert('Auth error: ' + authError.message);
-        return;
-      }
-
-      if (!authData?.user) {
-        console.error('Test Login: No user returned');
-        alert('No user returned');
-        return;
-      }
-
-      console.log('Test Login: Successful!', {
-        id: authData.user.id,
-        email: authData.user.email,
-        lastSignIn: authData.user.last_sign_in_at
-      });
-      alert('Login successful! User ID: ' + authData.user.id);
-    } catch (err) {
-      console.error('Test Login: Unexpected error:', err);
-      alert('Unexpected error during test login');
-    }
-  };
-
-  // Add test handler
-  const handleTestSignIn = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    await testSignIn(formData.email, formData.password);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const startTime = Date.now();
     try {
       console.log('Login: Starting login process...', new Date().toISOString());
-      console.log('Login: Attempting login with:', formData.email);
       
       // Add loading state feedback
-      const toastId = toast.loading('Logging in...', { duration: 10000 }); // Set max duration
-      
-      // Test invalid credentials
-      console.log('Login: Sending credentials to AuthContext...');
-      const authResult = await Promise.race([
-        login(formData.email, formData.password),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Login timeout')), 10000)
-        )
-      ]);
-      
-      console.log('Login: Auth response time:', Date.now() - startTime, 'ms');
+      const toastId = toast.loading('Authenticating...', { duration: 15000 });
 
-      if (authResult.error) {
-        console.error('Login: Failed -', authResult.error.message);
+      // First, try direct authentication with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      console.log('Login: Direct auth response:', {
+        success: !!authData?.user,
+        error: authError?.message,
+        time: Date.now() - startTime + 'ms'
+      });
+
+      if (authError) {
         toast.dismiss(toastId);
-        if (authResult.error.message.includes('timeout')) {
-          toast.error('Login is taking too long. Please try again.');
-        } else {
-          toast.error(authResult.error.message || 'Invalid email or password');
-        }
+        console.error('Login failed:', authError);
+        toast.error(authError.message || 'Invalid credentials');
         return;
       }
 
-      if (!authResult.data?.user) {
-        console.error('Login: No user data received');
+      if (!authData?.user) {
         toast.dismiss(toastId);
-        toast.error('Login failed. Please try again.');
+        toast.error('No user data received');
         return;
       }
 
-      console.log('Login: Success, user data received in:', Date.now() - startTime, 'ms');
-      
-      // Fetch user profile to get role
-      console.log('Login: Fetching profile for user ID:', authResult.data.user.id);
-      const profileStartTime = Date.now();
-      
-      type ProfileResponse = {
-        data: { role: string; id: string } | null;
-        error: { message?: string; code?: string } | null;
-      };
+      // Now fetch the user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
 
-      const profileResult = await Promise.race([
-        supabase
-          .from('profiles')
-          .select('role, id')
-          .eq('id', authResult.data.user.id)
-          .single(),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-        )
-      ]) as ProfileResponse;
+      console.log('Login: Profile fetch result:', {
+        hasProfile: !!profile,
+        error: profileError?.message,
+        time: Date.now() - startTime + 'ms'
+      });
 
-      console.log('Login: Profile fetch time:', Date.now() - profileStartTime, 'ms');
-
-      if (profileResult.error) {
-        console.error('Login: Error fetching profile -', profileResult.error);
+      if (profileError) {
         toast.dismiss(toastId);
-        
-        if (profileResult.error.message?.includes('timeout')) {
-          toast.error('Profile loading timed out. Please try again.');
-        } else if (profileResult.error.code === 'PGRST301') {
-          toast.error('Please verify your email first.');
-        } else {
-          toast.error('Error loading profile. Please try again.');
-        }
+        console.error('Profile fetch error:', profileError);
+        toast.error('Error loading profile. Please try again.');
         return;
       }
 
-      if (!profileResult.data) {
-        console.error('Login: No profile data available');
+      if (!profile) {
         toast.dismiss(toastId);
         toast.error('Profile not found. Please register first.');
         return;
       }
 
-      console.log('Login: Total process time:', Date.now() - startTime, 'ms');
-      
-      // Navigate based on role
-      const userRole = profileResult.data.role.toUpperCase();
-      console.log('Login: Navigating based on role:', userRole);
-
+      // Success! Navigate based on role
       toast.dismiss(toastId);
       toast.success('Login successful!');
 
-      // Immediate navigation
+      const userRole = profile.role.toUpperCase();
+      console.log('Login: Navigation with role:', userRole);
+
       switch(userRole) {
         case 'ADMIN':
           navigate('/admin/films');
@@ -159,23 +90,41 @@ export default function Login() {
           navigate('/viewer/dashboard');
           break;
         default:
-          toast.error('Invalid user role. Please contact support.');
+          toast.error('Invalid user role');
       }
+
     } catch (error) {
-      const totalTime = Date.now() - startTime;
-      console.error('Login: Error after', totalTime, 'ms:', error);
-      console.error('Login: Full error object:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        time: totalTime,
-        error
+      console.error('Login: Unexpected error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
+    }
+  };
+
+  // Simplify the test sign-in function
+  const handleTestSignIn = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
-      
-      toast.dismiss();
-      if (error instanceof Error && error.message.includes('timeout')) {
-        toast.error('Login process timed out. Please try again.');
-      } else {
-        toast.error('An unexpected error occurred. Please try again.');
+
+      if (error) {
+        console.error('Test Login Error:', error);
+        alert('Login failed: ' + error.message);
+        return;
       }
+
+      if (data?.user) {
+        console.log('Test Login Success:', {
+          id: data.user.id,
+          email: data.user.email,
+          lastSignIn: data.user.last_sign_in_at
+        });
+        alert('Login successful! User ID: ' + data.user.id);
+      }
+    } catch (err) {
+      console.error('Test Login Error:', err);
+      alert('Unexpected error during test login');
     }
   };
 
