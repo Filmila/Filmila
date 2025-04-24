@@ -5,6 +5,12 @@ import '../styles/theme.css';
 const Layout = () => {
   const { user, logout } = useAuth();
 
+  const getDashboardLink = () => {
+    if (!user?.role) return '/';
+    const role = user.role.toLowerCase();
+    return `/${role}/${role === 'admin' ? 'films' : 'dashboard'}`;
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-gray-900 text-white">
@@ -16,7 +22,7 @@ const Layout = () => {
             {user ? (
               <>
                 <Link 
-                  to="/dashboard" 
+                  to={getDashboardLink()} 
                   className="hover:text-gray-300 transition-colors"
                 >
                   Dashboard
