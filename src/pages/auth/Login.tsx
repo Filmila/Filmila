@@ -12,6 +12,48 @@ export default function Login() {
     password: ''
   });
 
+  // Add test sign-in function
+  const testSignIn = async (email: string, password: string) => {
+    try {
+      console.log('Test Login: Starting simple auth test...');
+      console.log('Test Login: Attempting with email:', email);
+      
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        console.error('Test Login: Sign-in failed:', authError.message);
+        console.error('Test Login: Full error:', authError);
+        alert('Auth error: ' + authError.message);
+        return;
+      }
+
+      if (!authData?.user) {
+        console.error('Test Login: No user returned');
+        alert('No user returned');
+        return;
+      }
+
+      console.log('Test Login: Successful!', {
+        id: authData.user.id,
+        email: authData.user.email,
+        lastSignIn: authData.user.last_sign_in_at
+      });
+      alert('Login successful! User ID: ' + authData.user.id);
+    } catch (err) {
+      console.error('Test Login: Unexpected error:', err);
+      alert('Unexpected error during test login');
+    }
+  };
+
+  // Add test handler
+  const handleTestSignIn = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await testSignIn(formData.email, formData.password);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -21,12 +63,24 @@ export default function Login() {
       // Add loading state feedback
       const toastId = toast.loading('Logging in...');
       
+      // Test invalid credentials
+      console.log('Login: Sending credentials to AuthContext...');
       const { data, error } = await login(formData.email, formData.password);
       
-      console.log('Login: Initial response:', { data, error });
+      console.log('Login: Response received:', {
+        success: !!data?.user,
+        hasError: !!error,
+        errorMessage: error?.message,
+        userData: data?.user ? {
+          id: data.user.id,
+          email: data.user.email,
+          role: data.user.customRole
+        } : null
+      });
 
       if (error) {
         console.error('Login: Failed -', error.message);
+        console.error('Login: Full error object:', error);
         toast.dismiss(toastId);
         toast.error(error.message || 'Invalid email or password');
         return;
@@ -34,13 +88,17 @@ export default function Login() {
 
       if (!data?.user) {
         console.error('Login: No user data received');
+        console.error('Login: Full response:', { data, error });
         toast.dismiss(toastId);
         toast.error('Login failed. Please try again.');
         return;
       }
 
-      console.log('Login: Success, user data:', data.user);
-      console.log('Login: User ID:', data.user.id);
+      console.log('Login: Success, user data:', {
+        id: data.user.id,
+        email: data.user.email,
+        role: data.user.customRole
+      });
       
       // Fetch user profile to get role
       console.log('Login: Fetching profile for user ID:', data.user.id);
@@ -50,12 +108,16 @@ export default function Login() {
         .eq('id', data.user.id)
         .single();
 
-      console.log('Login: Full profile query result:', profileResult);
-      console.log('Login: Profile data:', profileResult.data);
-      console.log('Login: Profile error:', profileResult.error);
+      console.log('Login: Profile query result:', {
+        success: !!profileResult.data,
+        hasError: !!profileResult.error,
+        profile: profileResult.data,
+        error: profileResult.error
+      });
 
       if (profileResult.error) {
         console.error('Login: Error fetching profile -', profileResult.error);
+        console.error('Login: Full profile error:', profileResult);
         
         // Check if profile exists
         const { count, error: countError } = await supabase
@@ -63,7 +125,7 @@ export default function Login() {
           .select('*', { count: 'exact' })
           .eq('id', data.user.id);
           
-        console.log('Login: Profile count check:', { count, countError });
+        console.log('Login: Profile existence check:', { count, error: countError });
         
         // If profile doesn't exist, create one
         if (count === 0) {
@@ -80,7 +142,12 @@ export default function Login() {
             .select()
             .single();
             
-          console.log('Login: Profile creation result:', profileResult);
+          console.log('Login: Profile creation result:', {
+            success: !!profileResult.data,
+            hasError: !!profileResult.error,
+            profile: profileResult.data,
+            error: profileResult.error
+          });
           
           if (profileResult.error) {
             console.error('Login: Failed to create profile -', profileResult.error);
@@ -96,14 +163,15 @@ export default function Login() {
       }
 
       if (!profileResult.data) {
-        console.error('Login: No profile found');
+        console.error('Login: No profile data available');
+        console.error('Login: Full profile result:', profileResult);
         toast.dismiss(toastId);
         toast.error('User profile not found');
         return;
       }
 
-      console.log('Login: Profile loaded:', profileResult.data);
-      console.log('Login: User role before navigation:', profileResult.data.role);
+      console.log('Login: Profile loaded successfully:', profileResult.data);
+      console.log('Login: User role:', profileResult.data.role);
       
       // Navigate based on role
       const userRole = profileResult.data.role.toUpperCase();
@@ -127,6 +195,11 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login: Unexpected error during login:', error);
+      console.error('Login: Full error object:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       toast.dismiss();
       if (error instanceof Error && error.message.includes('timeout')) {
         toast.error('Login timed out. Please try again.');
@@ -187,12 +260,20 @@ export default function Login() {
             </div>
           </div>
 
-          <div>
+          <div className="flex flex-col space-y-4">
             <button
               type="submit"
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Sign in
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTestSignIn}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              Test Sign In Only
             </button>
           </div>
 
