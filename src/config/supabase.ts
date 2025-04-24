@@ -13,12 +13,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    storage: window.localStorage,
+    storageKey: 'filmila-auth-token',
+    debug: true // This will help us see what's happening with auth
   },
   global: {
     headers: {
       'x-application-name': 'filmila'
     }
+  },
+  db: {
+    schema: 'public'
   },
   realtime: {
     params: {
