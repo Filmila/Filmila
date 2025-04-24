@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
@@ -10,45 +10,71 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const getDashboardLink = () => {
+    if (!user?.role) return '/dashboard';
+    return `/${user.role.toLowerCase()}/dashboard`;
+  };
+
   return (
-    <nav className="bg-white shadow">
+    <nav className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <a href="/" className="text-xl font-bold text-indigo-600">
-                Filmila
-              </a>
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center">
+            <Link to="/" className="text-2xl font-bold text-purple-600">
+              Filmila
+            </Link>
+            <div className="hidden md:flex ml-10 space-x-8">
+              <Link to="/browse" className="text-gray-600 hover:text-purple-600">
+                Browse Films
+              </Link>
+              <Link to="/filmmakers" className="text-gray-600 hover:text-purple-600">
+                Filmmakers
+              </Link>
+              <Link to="/ratings" className="text-gray-600 hover:text-purple-600">
+                Ratings
+              </Link>
+              <Link to="/about" className="text-gray-600 hover:text-purple-600">
+                About Us
+              </Link>
+              <Link to="/contact" className="text-gray-600 hover:text-purple-600">
+                Contact
+              </Link>
             </div>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             {isAuthenticated && user ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700">
-                  {user.email} ({user.role})
+                <Link
+                  to={getDashboardLink()}
+                  className="text-gray-600 hover:text-purple-600"
+                >
+                  Dashboard
+                </Link>
+                <span className="text-sm text-gray-500">
+                  {user.email}
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 >
                   Logout
                 </button>
               </div>
             ) : (
               <div className="space-x-4">
-                <a
-                  href="/login"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                <Link
+                  to="/login"
+                  className="text-gray-600 hover:text-purple-600"
                 >
                   Login
-                </a>
-                <a
-                  href="/register"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 >
-                  Register
-                </a>
+                  Sign Up
+                </Link>
               </div>
             )}
           </div>

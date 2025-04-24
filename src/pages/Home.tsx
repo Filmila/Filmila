@@ -68,49 +68,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-bold text-purple-600">Filmila</Link>
-              <nav className="hidden md:flex ml-10 space-x-8">
-                <Link to="/browse" className="text-gray-600 hover:text-purple-600">Browse Films</Link>
-                <Link to="/filmmakers" className="text-gray-600 hover:text-purple-600">Filmmakers</Link>
-                <Link to="/ratings" className="text-gray-600 hover:text-purple-600">Ratings</Link>
-                <Link to="/about" className="text-gray-600 hover:text-purple-600">About Us</Link>
-                <Link to="/contact" className="text-gray-600 hover:text-purple-600">Contact</Link>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              {!isAuthenticated ? (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-gray-600 hover:text-purple-600"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              ) : (
-                <Link
-                  to="/dashboard"
-                  className="text-gray-600 hover:text-purple-600"
-                >
-                  Dashboard
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero Section */}
       <section className="relative bg-purple-900 text-white">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900 to-purple-600 opacity-90" />
