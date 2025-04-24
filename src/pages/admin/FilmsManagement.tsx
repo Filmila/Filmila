@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { Film } from '../../types';
 import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
+import { notificationService } from '../../services/notificationService';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
 type SortOrder = 'asc' | 'desc';
@@ -16,8 +17,17 @@ interface FilterPreferences {
   end_date: string;
 }
 
+interface FilmWithActions extends Film {
+  last_action?: {
+    type: 'approve' | 'reject';
+    admin: string;
+    date: string;
+    note?: string;
+  };
+}
+
 const FilmsManagement: React.FC = () => {
-  const [films, setFilms] = useState<Film[]>([]);
+  const [films, setFilms] = useState<FilmWithActions[]>([]);
   const [selected_films, setSelectedFilms] = useState<Set<string>>(new Set());
   const [confirm_action, setConfirmAction] = useState<'approve' | 'reject' | null>(null);
   const [is_reject_modal_open, setIsRejectModalOpen] = useState(false);
@@ -245,14 +255,23 @@ const FilmsManagement: React.FC = () => {
     }
   };
 
-  const handleBulkApprove = () => {
-    setConfirmAction('approve');
-    setIsConfirmModalOpen(true);
+  const handleBulkApprove = async () => {
+    try {
+      const filmsToApprove = films.filter(film => selected_films.has(film.id));
+      
+      for (const film of filmsToApprove) {
+        await handleApprove(film);
+      }
+
+      setSelectedFilms(new Set());
+    } catch (error) {
+      console.error('Error in bulk approve:', error);
+    }
   };
 
   const handleBulkReject = () => {
     setConfirmAction('reject');
-    setIsConfirmModalOpen(true);
+    setIsRejectModalOpen(true);
   };
 
   const confirmBulkAction = async () => {
@@ -290,20 +309,96 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
-      const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved', undefined);
-      setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
-    } catch (err) {
-      console.error('Failed to approve film:', err);
+      const { error } = await supabase
+        .from('films')
+        .update({
+          status: 'approved',
+          last_action: {
+            type: 'approve',
+            admin: currentAdmin,
+            date: new Date().toISOString()
+          }
+        })
+        .eq('id', film.id);
+
+      if (error) throw error;
+
+      // Send notification to filmmaker
+      await notificationService.sendFilmApprovalNotification(
+        film.id,
+        film.title,
+        film.filmmaker
+      );
+
+      // Update local state
+      setFilms(prev =>
+        prev.map(f =>
+          f.id === film.id
+            ? {
+                ...f,
+                status: 'approved',
+                last_action: {
+                  type: 'approve',
+                  admin: currentAdmin,
+                  date: new Date().toISOString()
+                }
+              }
+            : f
+        )
+      );
+    } catch (error) {
+      console.error('Error approving film:', error);
     }
   };
 
-  const handleReject = async (film: Film) => {
+  const handleReject = async (film: Film, note: string) => {
     try {
-      const updatedFilm = await filmService.updateFilmStatus(film.id, 'rejected', rejection_note);
-      setFilms(films.map(f => f.id === film.id ? updatedFilm : f));
-      setIsRejectModalOpen(true);
-    } catch (err) {
-      console.error('Failed to reject film:', err);
+      const { error } = await supabase
+        .from('films')
+        .update({
+          status: 'rejected',
+          last_action: {
+            type: 'reject',
+            admin: currentAdmin,
+            date: new Date().toISOString(),
+            note
+          }
+        })
+        .eq('id', film.id);
+
+      if (error) throw error;
+
+      // Send notification to filmmaker
+      await notificationService.sendFilmRejectionNotification(
+        film.id,
+        film.title,
+        film.filmmaker,
+        note
+      );
+
+      // Update local state
+      setFilms(prev =>
+        prev.map(f =>
+          f.id === film.id
+            ? {
+                ...f,
+                status: 'rejected',
+                last_action: {
+                  type: 'reject',
+                  admin: currentAdmin,
+                  date: new Date().toISOString(),
+                  note
+                }
+              }
+            : f
+        )
+      );
+
+      setIsRejectModalOpen(false);
+      setRejectionNote('');
+      setSelectedFilm(null);
+    } catch (error) {
+      console.error('Error rejecting film:', error);
     }
   };
 
@@ -565,7 +660,10 @@ const FilmsManagement: React.FC = () => {
                           <CheckIcon className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => handleReject(film)}
+                          onClick={() => {
+                            setSelectedFilm(film);
+                            setIsRejectModalOpen(true);
+                          }}
                           className="text-red-600 hover:text-red-900"
                         >
                           <XCircleIcon className="h-5 w-5" />
@@ -712,10 +810,20 @@ const FilmsManagement: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={handleSaveRejection}
+                onClick={() => {
+                  if (selected_film) {
+                    handleReject(selected_film, rejection_note);
+                  } else if (selected_films.size > 0) {
+                    // Handle bulk rejection
+                    films
+                      .filter(film => selected_films.has(film.id))
+                      .forEach(film => handleReject(film, rejection_note));
+                  }
+                }}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                disabled={!rejection_note.trim()}
               >
-                Reject Film{selected_films.size > 0 ? `s (${selected_films.size})` : ''}
+                Reject
               </button>
             </div>
           </div>

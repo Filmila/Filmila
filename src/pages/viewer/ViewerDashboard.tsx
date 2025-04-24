@@ -18,42 +18,9 @@ interface RatedFilm {
   rated_at: string;
 }
 
-interface SupabaseFilmRow {
-  films: {
-    id: string;
-    title: string;
-    description: string;
-    filmmaker: string;
-    upload_date: string;
-    status: 'pending' | 'approved' | 'rejected';
-    views: number;
-    revenue: number;
-    thumbnail_url?: string;
-    video_url: string;
-    rejection_note?: string;
-    last_action?: {
-      type: 'approve' | 'reject';
-      admin: string;
-      date: string;
-    };
-  };
-  film_id: string;
-}
-
-interface SupabaseProgressRow extends SupabaseFilmRow {
-  progress: number;
-  last_watched: string;
-}
-
-interface SupabaseRatingRow extends SupabaseFilmRow {
-  rating: number;
-  rated_at: string;
-}
-
 const ViewerDashboard = () => {
   const { user } = useAuth();
   const [watchedFilms, setWatchedFilms] = useState<Film[]>([]);
-  const [favoriteFilms, setFavoriteFilms] = useState<Film[]>([]);
   const [recommendedFilms, setRecommendedFilms] = useState<Film[]>([]);
   const [continueWatching, setContinueWatching] = useState<FilmProgress[]>([]);
   const [ratedFilms, setRatedFilms] = useState<RatedFilm[]>([]);
@@ -75,17 +42,6 @@ const ViewerDashboard = () => {
         if (watchedError) throw watchedError;
         const watchedFilmsData = watched?.map(w => (w.films as unknown) as Film) || [];
         setWatchedFilms(watchedFilmsData);
-
-        // Fetch favorite films
-        const { data: favorites, error: favoritesError } = await supabase
-          .from('favorite_films')
-          .select('film_id, films(*)')
-          .eq('viewer_id', user?.id)
-          .order('created_at', { ascending: false });
-
-        if (favoritesError) throw favoritesError;
-        const favoriteFilmsData = favorites?.map(f => (f.films as unknown) as Film) || [];
-        setFavoriteFilms(favoriteFilmsData);
 
         // Fetch films in progress
         const { data: progress, error: progressError } = await supabase
