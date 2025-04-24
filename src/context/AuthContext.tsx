@@ -34,35 +34,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserRole = async (userId: string) => {
     try {
+      console.log('fetchUserRole: Starting fetch for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
 
+      console.log('fetchUserRole: Response:', { data, error });
+
       if (error) {
-        console.error('Error fetching user role:', error);
+        console.error('fetchUserRole: Error fetching user role:', error);
         return null;
       }
 
+      console.log('fetchUserRole: Role found:', data?.role);
       return data?.role || null;
     } catch (error) {
-      console.error('Error in fetchUserRole:', error);
+      console.error('fetchUserRole: Error:', error);
       return null;
     }
   };
 
   const updateUserWithRole = async (authUser: User | null) => {
     if (!authUser) {
+      console.log('updateUserWithRole: No auth user provided');
       setUser(null);
       return;
     }
 
+    console.log('updateUserWithRole: Fetching role for user:', authUser.id);
     const role = await fetchUserRole(authUser.id);
+    console.log('updateUserWithRole: Fetched role:', role);
+
     const customUser: CustomUser = {
       ...authUser,
       customRole: role
     };
+    console.log('updateUserWithRole: Setting user with role:', customUser);
     setUser(customUser);
   };
 
@@ -104,25 +113,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       console.log('AuthContext: Starting signIn process...');
-      const { data, error } = await supabase.auth.signInWithPassword({
+      
+      // Add timeout for Supabase call
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Login timeout')), 10000);
+      });
+
+      // Race between the login and timeout
+      const { data, error } = await Promise.race([
+        signInPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('AuthContext: Raw Supabase response:', { data, error });
       
-      console.log('AuthContext: SignIn response:', { data, error });
+      if (error) {
+        console.error('AuthContext: Supabase error:', error);
+        return { data: null, error };
+      }
+
+      if (!data || !data.user) {
+        console.error('AuthContext: No data or user in response');
+        return { data: null, error: new Error('No user data received') };
+      }
+
+      console.log('AuthContext: User authenticated, updating with role...');
+      const customUser = { ...data.user };
       
-      if (data.user) {
-        console.log('AuthContext: User authenticated, updating with role...');
-        const customUser = { ...data.user };
+      try {
         await updateUserWithRole(customUser);
         console.log('AuthContext: User updated with role:', customUser);
-        return { data: { user: customUser as CustomUser }, error };
+        return { data: { user: customUser as CustomUser }, error: null };
+      } catch (roleError) {
+        console.error('AuthContext: Error updating user role:', roleError);
+        return { data: null, error: roleError as Error };
       }
-      
-      console.log('AuthContext: No user data in response');
-      return { data: null, error };
     } catch (error) {
       console.error('AuthContext: Error in signIn:', error);
+      if (error instanceof Error && error.message === 'Login timeout') {
+        return { data: null, error: new Error('Login timed out. Please try again.') };
+      }
       return { data: null, error: error as Error };
     }
   };

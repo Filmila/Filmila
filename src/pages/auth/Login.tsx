@@ -19,7 +19,7 @@ export default function Login() {
       console.log('Login: Attempting login with:', formData.email);
       
       // Add loading state feedback
-      toast.loading('Logging in...');
+      const toastId = toast.loading('Logging in...');
       
       const { data, error } = await login(formData.email, formData.password);
       
@@ -27,14 +27,14 @@ export default function Login() {
 
       if (error) {
         console.error('Login: Failed -', error.message);
-        toast.dismiss();
+        toast.dismiss(toastId);
         toast.error(error.message || 'Invalid email or password');
         return;
       }
 
       if (!data?.user) {
         console.error('Login: No user data received');
-        toast.dismiss();
+        toast.dismiss(toastId);
         toast.error('Login failed. Please try again.');
         return;
       }
@@ -84,12 +84,12 @@ export default function Login() {
           
           if (profileResult.error) {
             console.error('Login: Failed to create profile -', profileResult.error);
-            toast.dismiss();
+            toast.dismiss(toastId);
             toast.error('Error creating user profile');
             return;
           }
         } else {
-          toast.dismiss();
+          toast.dismiss(toastId);
           toast.error('Error loading user profile');
           return;
         }
@@ -97,7 +97,7 @@ export default function Login() {
 
       if (!profileResult.data) {
         console.error('Login: No profile found');
-        toast.dismiss();
+        toast.dismiss(toastId);
         toast.error('User profile not found');
         return;
       }
@@ -109,7 +109,7 @@ export default function Login() {
       const userRole = profileResult.data.role.toUpperCase();
       console.log('Login: Navigating based on role:', userRole);
 
-      toast.dismiss();
+      toast.dismiss(toastId);
       toast.success('Login successful!');
 
       if (userRole === 'ADMIN') {
@@ -128,7 +128,11 @@ export default function Login() {
     } catch (error) {
       console.error('Login: Unexpected error during login:', error);
       toast.dismiss();
-      toast.error('An unexpected error occurred. Please try again.');
+      if (error instanceof Error && error.message.includes('timeout')) {
+        toast.error('Login timed out. Please try again.');
+      } else {
+        toast.error('An unexpected error occurred. Please try again.');
+      }
     }
   };
 
