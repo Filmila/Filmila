@@ -104,74 +104,39 @@ export default function Login() {
       console.log('Login: Fetching profile for user ID:', data.user.id);
       let profileResult = await supabase
         .from('profiles')
-        .select('*')  // Select all fields for debugging
+        .select('role, id, email')  // Select only needed fields
         .eq('id', data.user.id)
         .single();
 
       console.log('Login: Profile query result:', {
         success: !!profileResult.data,
         hasError: !!profileResult.error,
-        profile: profileResult.data,
         error: profileResult.error
       });
 
       if (profileResult.error) {
         console.error('Login: Error fetching profile -', profileResult.error);
-        console.error('Login: Full profile error:', profileResult);
         
-        // Check if profile exists
-        const { count, error: countError } = await supabase
-          .from('profiles')
-          .select('*', { count: 'exact' })
-          .eq('id', data.user.id);
-          
-        console.log('Login: Profile existence check:', { count, error: countError });
-        
-        // If profile doesn't exist, create one
-        if (count === 0) {
-          console.log('Login: Creating missing profile for user');
-          profileResult = await supabase
-            .from('profiles')
-            .insert([{
-              id: data.user.id,
-              email: data.user.email,
-              role: 'FILMMAKER',  // Default role
-              created_at: new Date().toISOString(),
-              last_sign_in_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
-            
-          console.log('Login: Profile creation result:', {
-            success: !!profileResult.data,
-            hasError: !!profileResult.error,
-            profile: profileResult.data,
-            error: profileResult.error
-          });
-          
-          if (profileResult.error) {
-            console.error('Login: Failed to create profile -', profileResult.error);
-            toast.dismiss(toastId);
-            toast.error('Error creating user profile');
-            return;
-          }
-        } else {
+        // Check if it's a permissions error
+        if (profileResult.error.code === 'PGRST301') {
           toast.dismiss(toastId);
-          toast.error('Error loading user profile');
+          toast.error('Access denied. Please verify your email first.');
           return;
         }
+
+        toast.dismiss(toastId);
+        toast.error('Error loading user profile. Please try again.');
+        return;
       }
 
       if (!profileResult.data) {
         console.error('Login: No profile data available');
-        console.error('Login: Full profile result:', profileResult);
         toast.dismiss(toastId);
-        toast.error('User profile not found');
+        toast.error('User profile not found. Please register first.');
         return;
       }
 
-      console.log('Login: Profile loaded successfully:', profileResult.data);
-      console.log('Login: User role:', profileResult.data.role);
+      console.log('Login: Profile loaded successfully');
       
       // Navigate based on role
       const userRole = profileResult.data.role.toUpperCase();
@@ -191,7 +156,7 @@ export default function Login() {
         navigate('/viewer/dashboard');
       } else {
         console.error('Login: Invalid role -', userRole);
-        toast.error('Invalid user role');
+        toast.error('Invalid user role. Please contact support.');
       }
     } catch (error) {
       console.error('Login: Unexpected error during login:', error);

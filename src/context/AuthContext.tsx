@@ -60,125 +60,69 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('AuthContext: Starting signIn process...');
       
-      // Attempt authentication with retries
-      let authResult;
-      let attempts = 0;
-      const maxAttempts = 3;
-      const timeout = 60000; // Increased to 60 seconds
+      // Simple direct authentication without retries
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      while (attempts < maxAttempts) {
-        try {
-          authResult = await Promise.race([
-            supabase.auth.signInWithPassword({
-              email,
-              password,
-            }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error(`Auth timeout after ${timeout/1000} seconds`)), timeout)
-            )
-          ]) as any;
-
-          // If successful, break the retry loop
-          if (authResult.data?.user) {
-            break;
-          }
-
-          // If there's an error that's not timeout-related, break the loop
-          if (authResult.error && !authResult.error.message?.includes('timeout')) {
-            break;
-          }
-        } catch (error) {
-          console.log(`AuthContext: Attempt ${attempts + 1} failed:`, error);
-          attempts++;
-          
-          if (attempts === maxAttempts) {
-            throw new Error('Authentication failed after multiple attempts. Please check your internet connection.');
-          }
-          
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          continue;
-        }
+      if (authError) {
+        console.error('AuthContext: Auth error:', authError);
+        return { data: null, error: authError };
       }
 
-      console.log('AuthContext: Auth response:', authResult);
-
-      if (authResult.error) {
-        console.error('AuthContext: Auth error:', authResult.error);
-        return { data: null, error: authResult.error };
-      }
-
-      if (!authResult.data?.user) {
+      if (!authData?.user) {
         console.error('AuthContext: No user data in auth response');
         return { data: null, error: new Error('Authentication failed') };
       }
 
-      // Set the user immediately after successful auth
-      const initialUser: CustomUser = {
-        ...authResult.data.user,
-        customRole: 'FILMMAKER' // Set a default role immediately
-      };
-      setUser(initialUser);
-
-      // Then try to fetch the role asynchronously
       try {
-        console.log('AuthContext: Fetching role for user:', authResult.data.user.id);
-        
-        // Try to fetch the role with timeout
-        const profileResult = await Promise.race([
-          supabase
+        // Fetch the user's profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, id')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('AuthContext: Error fetching profile:', profileError);
+          
+          // Create a new profile if one doesn't exist
+          const { data: newProfile, error: createError } = await supabase
             .from('profiles')
-            .select('role')
-            .eq('id', authResult.data.user.id)
-            .single(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Profile fetch timeout')), 30000)
-          )
-        ]) as any;
+            .insert([{
+              id: authData.user.id,
+              email: authData.user.email,
+              role: 'VIEWER', // Default to VIEWER role for security
+              created_at: new Date().toISOString(),
+              last_sign_in_at: new Date().toISOString()
+            }])
+            .select('role, id')
+            .single();
 
-        if (profileResult.error) {
-          console.log('AuthContext: No existing profile, creating one...');
-          const newProfileResult = await Promise.race([
-            supabase
-              .from('profiles')
-              .insert([{
-                id: authResult.data.user.id,
-                email: authResult.data.user.email,
-                role: 'FILMMAKER',
-                created_at: new Date().toISOString(),
-                last_sign_in_at: new Date().toISOString()
-              }])
-              .select()
-              .single(),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Profile creation timeout')), 30000)
-            )
-          ]) as any;
-
-          if (newProfileResult.error) {
-            console.error('AuthContext: Error creating profile:', newProfileResult.error);
-            return { data: { user: initialUser }, error: null };
+          if (createError) {
+            console.error('AuthContext: Error creating profile:', createError);
+            return { data: null, error: new Error('Failed to create user profile') };
           }
 
           const userWithNewRole: CustomUser = {
-            ...authResult.data.user,
-            customRole: newProfileResult.data.role
+            ...authData.user,
+            customRole: newProfile.role
           };
           setUser(userWithNewRole);
           return { data: { user: userWithNewRole }, error: null };
         }
 
         const userWithRole: CustomUser = {
-          ...authResult.data.user,
-          customRole: profileResult.data.role
+          ...authData.user,
+          customRole: profileData.role
         };
         setUser(userWithRole);
         return { data: { user: userWithRole }, error: null };
 
-      } catch (roleError) {
-        console.error('AuthContext: Error handling role:', roleError);
-        // Still return success since auth worked
-        return { data: { user: initialUser }, error: null };
+      } catch (error) {
+        console.error('AuthContext: Error handling profile:', error);
+        return { data: null, error: error instanceof Error ? error : new Error('Profile creation failed') };
       }
     } catch (error) {
       console.error('AuthContext: Error in signIn:', error);
@@ -224,7 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('updateUserWithRole: Fetching role for user:', authUser.id);
       
       // Wait for any pending token refresh
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // await new Promise(resolve => setTimeout(resolve, 1000));
       
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {

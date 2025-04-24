@@ -106,28 +106,29 @@ export default function Register() {
             role: formData.role,
             email: formData.email,
             display_name: formData.email.split('@')[0],
-            providers: [],
-            provider_type: 'email',
             created_at: new Date().toISOString(),
             last_sign_in_at: new Date().toISOString()
           }
-        ]);
+        ])
+        .select('id')
+        .single();
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
         setDebugInfo(`Profile error: ${profileError.message || JSON.stringify(profileError)}`);
-        throw profileError;
+        
+        // If profile creation fails, clean up by deleting the auth user
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        throw new Error('Failed to create user profile. Please try again.');
       }
 
       console.log('Profile created successfully with role:', formData.role);
-
-      console.log('Registration completed successfully');
       setDebugInfo('Registration successful!');
 
-      // Show success message
+      // Show success message with more details
       toast.success(
-        'Registration successful! You can now log in.',
-        { duration: 5000 }
+        'Registration successful! Please check your email to verify your account before logging in.',
+        { duration: 6000 }
       );
 
       // Clear form
