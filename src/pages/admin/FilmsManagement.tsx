@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassIcon, ChevronUpIcon, ChevronDownIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { Film } from '../../types';
 import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
@@ -325,7 +325,6 @@ const FilmsManagement: React.FC = () => {
 
       // Send notification to filmmaker
       await notificationService.sendFilmApprovalNotification(
-        film.id,
         film.title,
         film.filmmaker
       );
@@ -370,7 +369,6 @@ const FilmsManagement: React.FC = () => {
 
       // Send notification to filmmaker
       await notificationService.sendFilmRejectionNotification(
-        film.id,
         film.title,
         film.filmmaker,
         note
@@ -399,30 +397,6 @@ const FilmsManagement: React.FC = () => {
       setSelectedFilm(null);
     } catch (error) {
       console.error('Error rejecting film:', error);
-    }
-  };
-
-  const handleSaveRejection = () => {
-    if (selected_film) {
-      const updatedFilms: Film[] = films.map(f => {
-        if (selected_films.has(f.id) || f.id === selected_film.id) {
-          return {
-            ...f,
-            status: 'rejected' as const,
-            rejection_note: rejection_note,
-            last_action: {
-              type: 'reject' as const,
-              admin: currentAdmin,
-              date: new Date().toISOString()
-            }
-          };
-        }
-        return f;
-      });
-      setFilms(updatedFilms);
-      setIsRejectModalOpen(false);
-      setRejectionNote('');
-      setSelectedFilms(new Set());
     }
   };
 

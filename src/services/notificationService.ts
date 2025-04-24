@@ -61,7 +61,7 @@ export const notificationService = {
     }
   },
 
-  async sendFilmApprovalNotification(filmId: string, filmTitle: string, userId: string) {
+  async sendFilmApprovalNotification(filmTitle: string, userId: string) {
     return this.createNotification({
       user_id: userId,
       title: 'Film Approved',
@@ -71,7 +71,7 @@ export const notificationService = {
     });
   },
 
-  async sendFilmRejectionNotification(filmId: string, filmTitle: string, userId: string, rejectionNote: string) {
+  async sendFilmRejectionNotification(filmTitle: string, userId: string, rejectionNote: string) {
     return this.createNotification({
       user_id: userId,
       title: 'Film Rejected',
