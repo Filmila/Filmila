@@ -41,14 +41,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', userId)
         .single();
 
-      console.log('fetchUserRole: Response:', { data, error });
-
       if (error) {
-        console.error('fetchUserRole: Error fetching user role:', error);
+        console.error('fetchUserRole: Error:', error);
         return null;
       }
 
-      console.log('fetchUserRole: Role found:', data?.role);
+      console.log('fetchUserRole: Success:', data);
       return data?.role || null;
     } catch (error) {
       console.error('fetchUserRole: Error:', error);
@@ -111,65 +109,88 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const maxRetries = 2;
-    let retryCount = 0;
-
-    const attemptSignIn = async (): Promise<any> => {
-      try {
-        console.log(`AuthContext: Attempting sign in (attempt ${retryCount + 1}/${maxRetries + 1})...`);
-        
-        // Add timeout for Supabase call
-        const signInPromise = supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        // Create a timeout promise - increased to 20 seconds
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Login timeout')), 20000);
-        });
-
-        // Race between the login and timeout
-        const { data, error } = await Promise.race([
-          signInPromise,
-          timeoutPromise
-        ]) as any;
-
-        console.log('AuthContext: Raw Supabase response:', { data, error });
-        
-        if (error) {
-          throw error;
-        }
-
-        if (!data || !data.user) {
-          throw new Error('No user data received');
-        }
-
-        console.log('AuthContext: User authenticated, updating with role...');
-        const customUser = { ...data.user };
-        
-        try {
-          await updateUserWithRole(customUser);
-          console.log('AuthContext: User updated with role:', customUser);
-          return { data: { user: customUser as CustomUser }, error: null };
-        } catch (roleError) {
-          console.error('AuthContext: Error updating user role:', roleError);
-          throw roleError;
-        }
-      } catch (error) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(`AuthContext: Retrying sign in... (${retryCount}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
-          return attemptSignIn();
-        }
-        throw error;
-      }
-    };
-
     try {
       console.log('AuthContext: Starting signIn process...');
-      return await attemptSignIn();
+      
+      // First, just try to authenticate
+      const authPromise = supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Login timeout')), 20000);
+      });
+
+      const { data: authData, error: authError } = await Promise.race([
+        authPromise,
+        timeoutPromise
+      ]) as any;
+
+      console.log('AuthContext: Auth response:', { authData, authError });
+
+      if (authError) {
+        console.error('AuthContext: Auth error:', authError);
+        return { data: null, error: authError };
+      }
+
+      if (!authData?.user) {
+        console.error('AuthContext: No user data in auth response');
+        return { data: null, error: new Error('Authentication failed') };
+      }
+
+      // Set the user immediately after successful auth
+      const initialUser: CustomUser = {
+        ...authData.user,
+        customRole: 'FILMMAKER' // Set a default role immediately
+      };
+      setUser(initialUser);
+
+      // Then try to fetch the role asynchronously
+      try {
+        console.log('AuthContext: Fetching role for user:', authData.user.id);
+        const role = await fetchUserRole(authData.user.id);
+        
+        if (role) {
+          const updatedUser: CustomUser = {
+            ...authData.user,
+            customRole: role
+          };
+          setUser(updatedUser);
+          return { data: { user: updatedUser }, error: null };
+        }
+        
+        // If no role found, create a profile
+        console.log('AuthContext: No role found, creating profile...');
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .insert([{
+            id: authData.user.id,
+            email: authData.user.email,
+            role: 'FILMMAKER',
+            created_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString()
+          }])
+          .select()
+          .single();
+
+        if (profileError) {
+          console.error('AuthContext: Error creating profile:', profileError);
+          // Still return success since auth worked
+          return { data: { user: initialUser }, error: null };
+        }
+
+        const userWithNewRole: CustomUser = {
+          ...authData.user,
+          customRole: profileData.role
+        };
+        setUser(userWithNewRole);
+        return { data: { user: userWithNewRole }, error: null };
+      } catch (roleError) {
+        console.error('AuthContext: Error handling role:', roleError);
+        // Still return success since auth worked
+        return { data: { user: initialUser }, error: null };
+      }
     } catch (error) {
       console.error('AuthContext: Error in signIn:', error);
       if (error instanceof Error && error.message === 'Login timeout') {
