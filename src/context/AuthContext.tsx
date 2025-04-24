@@ -2,14 +2,18 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '../config/supabase';
 import { User } from '@supabase/supabase-js';
 
+interface CustomUser extends User {
+  customRole?: string;
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: CustomUser | null;
   signUp: (email: string, password: string) => Promise<{
-    data: { user: User } | null;
+    data: { user: CustomUser } | null;
     error: Error | null;
   }>;
   signIn: (email: string, password: string) => Promise<{
-    data: { user: User } | null;
+    data: { user: CustomUser } | null;
     error: Error | null;
   }>;
   signOut: () => Promise<void>;
@@ -17,7 +21,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   logout: () => Promise<void>;
   login: (email: string, password: string) => Promise<{
-    data: { user: User } | null;
+    data: { user: CustomUser } | null;
     error: Error | null;
   }>;
 }
@@ -25,19 +29,53 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user role:', error);
+        return null;
+      }
+
+      return data?.role || null;
+    } catch (error) {
+      console.error('Error in fetchUserRole:', error);
+      return null;
+    }
+  };
+
+  const updateUserWithRole = async (authUser: User | null) => {
+    if (!authUser) {
+      setUser(null);
+      return;
+    }
+
+    const role = await fetchUserRole(authUser.id);
+    const customUser: CustomUser = {
+      ...authUser,
+      customRole: role
+    };
+    setUser(customUser);
+  };
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      updateUserWithRole(session?.user ?? null);
       setLoading(false);
     });
 
     // Listen for changes on auth state (signed in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      await updateUserWithRole(session?.user ?? null);
       setLoading(false);
     });
 
@@ -50,7 +88,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
       });
-      return { data: data.user ? { user: data.user } : null, error };
+      
+      if (data.user) {
+        const customUser = { ...data.user };
+        await updateUserWithRole(customUser);
+        return { data: { user: customUser as CustomUser }, error };
+      }
+      
+      return { data: null, error };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -62,7 +107,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
       });
-      return { data: data.user ? { user: data.user } : null, error };
+      
+      if (data.user) {
+        const customUser = { ...data.user };
+        await updateUserWithRole(customUser);
+        return { data: { user: customUser as CustomUser }, error };
+      }
+      
+      return { data: null, error };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -70,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
   };
 
   const value = {

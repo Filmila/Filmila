@@ -13,7 +13,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   useEffect(() => {
     console.log('ProtectedRoute mount check:', {
       isAuthenticated,
-      userRole: user?.role,
+      userRole: user?.customRole,
       requiredRole,
       user
     });
@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
     return <Navigate to="/login" replace />;
   }
 
-  const userRole = user.role?.toUpperCase();
+  const userRole = user.customRole?.toUpperCase();
   const requiredRoleUpper = requiredRole?.toUpperCase();
 
   console.log('Role check:', {
