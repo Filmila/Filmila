@@ -4,14 +4,20 @@ import { supabase } from '../../config/supabase';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
-export default function Register() {
+type UserRole = 'FILMMAKER' | 'VIEWER';
+
+interface RegisterProps {
+  defaultRole?: UserRole;
+}
+
+export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'VIEWER' as 'ADMIN' | 'FILMMAKER' | 'VIEWER',
+    role: defaultRole,
     portfolioLink: '',
     filmGenre: ''
   });

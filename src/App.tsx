@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import RoleSelection from './pages/auth/RoleSelection';
 import TestConnection from './pages/TestConnection';
 import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard';
 import UploadFilm from './pages/filmmaker/UploadFilm';
@@ -29,9 +30,11 @@ function App() {
         <main className="min-h-screen bg-gray-50 pt-4">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/test-connection" element={<TestConnection />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/register" element={<RoleSelection />} />
+            <Route path="/register/filmmaker" element={<Register defaultRole="FILMMAKER" />} />
+            <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
+            <Route path="/test-connection" element={<TestConnection />} />
             
             {/* Admin Routes */}
             <Route path="/admin/*" element={
