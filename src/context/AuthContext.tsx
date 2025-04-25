@@ -33,34 +33,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        updateUserWithRole(session.user);
-      } else {
-        setUser(null);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && mounted) {
+          await updateUserWithRole(session.user);
+        } else if (mounted) {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for changes on auth state (signed in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await updateUserWithRole(session.user);
-      } else {
-        setUser(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email);
+      
+      if (event === 'SIGNED_OUT') {
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
+        return;
       }
-      setLoading(false);
+
+      if (session?.user && mounted) {
+        await updateUserWithRole(session.user);
+      }
+      if (mounted) {
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
       console.log('AuthContext: Starting signIn process...');
+      setLoading(true);
       
-      // Simple direct authentication without retries
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -76,65 +101,98 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { data: null, error: new Error('Authentication failed') };
       }
 
-      try {
-        // Fetch the user's profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, id')
-          .eq('id', authData.user.id)
-          .single();
+      // Get or create profile
+      const userWithRole = await updateUserWithRole(authData.user);
+      return { data: { user: userWithRole }, error: null };
 
-        if (profileError) {
-          console.error('AuthContext: Error fetching profile:', profileError);
-          
-          // Create a new profile if one doesn't exist
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: authData.user.id,
-              email: authData.user.email,
-              role: 'VIEWER', // Default to VIEWER role for security
-              created_at: new Date().toISOString(),
-              last_sign_in_at: new Date().toISOString()
-            }])
-            .select('role, id')
-            .single();
-
-          if (createError) {
-            console.error('AuthContext: Error creating profile:', createError);
-            return { data: null, error: new Error('Failed to create user profile') };
-          }
-
-          const userWithNewRole: CustomUser = {
-            ...authData.user,
-            customRole: newProfile.role
-          };
-          setUser(userWithNewRole);
-          return { data: { user: userWithNewRole }, error: null };
-        }
-
-        const userWithRole: CustomUser = {
-          ...authData.user,
-          customRole: profileData.role
-        };
-        setUser(userWithRole);
-        return { data: { user: userWithRole }, error: null };
-
-      } catch (error) {
-        console.error('AuthContext: Error handling profile:', error);
-        return { data: null, error: error instanceof Error ? error : new Error('Profile creation failed') };
-      }
     } catch (error) {
       console.error('AuthContext: Error in signIn:', error);
       return { 
         data: null, 
         error: error instanceof Error ? error : new Error('An unknown error occurred')
       };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateUserWithRole = async (authUser: User): Promise<CustomUser> => {
+    if (!authUser) {
+      console.log('updateUserWithRole: No auth user provided');
+      setUser(null);
+      return authUser as CustomUser;
+    }
+
+    try {
+      console.log('updateUserWithRole: Fetching role for user:', authUser.id);
+      
+      // First try to get existing profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
+
+      if (!profileError && profileData) {
+        const customUser: CustomUser = {
+          ...authUser,
+          customRole: profileData.role
+        };
+        console.log('updateUserWithRole: Found existing profile with role:', profileData.role);
+        setUser(customUser);
+        return customUser;
+      }
+
+      // If no profile exists, create one
+      console.log('updateUserWithRole: No profile found, creating new profile');
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .upsert([
+          {
+            id: authUser.id,
+            email: authUser.email,
+            role: 'VIEWER',
+            created_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString()
+          }
+        ], {
+          onConflict: 'id'
+        })
+        .select('role')
+        .single();
+
+      if (createError) {
+        console.error('updateUserWithRole: Error creating profile:', createError);
+        const defaultUser: CustomUser = {
+          ...authUser,
+          customRole: 'VIEWER'
+        };
+        setUser(defaultUser);
+        return defaultUser;
+      }
+
+      const userWithNewRole: CustomUser = {
+        ...authUser,
+        customRole: newProfile.role
+      };
+      console.log('updateUserWithRole: Created new profile with role:', newProfile.role);
+      setUser(userWithNewRole);
+      return userWithNewRole;
+
+    } catch (error) {
+      console.error('updateUserWithRole: Error:', error);
+      const defaultUser: CustomUser = {
+        ...authUser,
+        customRole: 'VIEWER'
+      };
+      setUser(defaultUser);
+      return defaultUser;
     }
   };
 
   const signUp = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -149,64 +207,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { data: null, error };
     } catch (error) {
       return { data: null, error: error as Error };
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
-  const updateUserWithRole = async (authUser: User | null) => {
-    if (!authUser) {
-      console.log('updateUserWithRole: No auth user provided');
-      setUser(null);
-      return;
-    }
-
+    setLoading(true);
     try {
-      console.log('updateUserWithRole: Fetching role for user:', authUser.id);
-      
-      // Wait for any pending token refresh
-      // await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        console.error('updateUserWithRole: No valid session');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', authUser.id)
-        .single();
-
-      if (error) {
-        console.error('updateUserWithRole: Error fetching role:', error);
-        // Set default role if fetch fails
-        const defaultUser: CustomUser = {
-          ...authUser,
-          customRole: 'FILMMAKER'
-        };
-        setUser(defaultUser);
-        return;
-      }
-
-      const customUser: CustomUser = {
-        ...authUser,
-        customRole: data.role
-      };
-      console.log('updateUserWithRole: Setting user with role:', customUser);
-      setUser(customUser);
+      await supabase.auth.signOut();
+      setUser(null);
     } catch (error) {
-      console.error('updateUserWithRole: Error:', error);
-      // Set default role if there's an error
-      const defaultUser: CustomUser = {
-        ...authUser,
-        customRole: 'FILMMAKER'
-      };
-      setUser(defaultUser);
+      console.error('Error signing out:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -216,7 +230,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signIn,
     signOut,
     loading,
-    isAuthenticated: user !== null,
+    isAuthenticated: !!user,
     logout: signOut,
     login: signIn,
   };
