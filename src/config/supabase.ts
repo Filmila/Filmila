@@ -78,7 +78,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 export const checkSupabaseHealth = async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    return true;
+    return !!session; // Return true if session exists, false otherwise
   } catch (error) {
     console.error('Health check failed:', error);
     return false;
