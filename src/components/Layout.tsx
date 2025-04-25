@@ -6,8 +6,8 @@ const Layout = () => {
   const { user, logout } = useAuth();
 
   const getDashboardLink = () => {
-    if (!user?.customRole) return '/';
-    const role = user.customRole.toLowerCase();
+    if (!user?.profile?.role) return '/';
+    const role = user.profile.role.toLowerCase();
     return `/${role}/${role === 'admin' ? 'films' : 'dashboard'}`;
   };
 
