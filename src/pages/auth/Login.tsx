@@ -9,61 +9,45 @@ export default function Login() {
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const startTime = Date.now();
+    setIsLoading(true);
+    
     try {
-      console.log('Login: Starting login process...', new Date().toISOString());
-      
-      // Add loading state feedback
-      const toastId = toast.loading('Authenticating...', { duration: 15000 });
+      console.log('Login: Starting login process...');
+      const loadingToast = toast.loading('Signing in...');
 
-      // First, try direct authentication with Supabase
+      // Attempt to sign in
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
-      console.log('Login: Direct auth response:', {
-        success: !!authData?.user,
-        error: authError?.message,
-        time: Date.now() - startTime + 'ms'
-      });
-
       if (authError) {
-        toast.dismiss(toastId);
-        console.error('Login failed:', authError);
+        toast.dismiss(loadingToast);
         toast.error(authError.message || 'Invalid credentials');
+        console.error('Login failed:', authError);
         return;
       }
 
       if (!authData?.user) {
-        toast.dismiss(toastId);
-        toast.error('No user data received');
+        toast.dismiss(loadingToast);
+        toast.error('Login failed. Please try again.');
         return;
       }
 
-      // Now fetch the user's profile
-      let userProfile = await supabase
+      // Fetch or create user profile
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', authData.user.id)
-        .single()
-        .then(({ data, error }) => {
-          if (error || !data) return null;
-          return data;
-        });
+        .single();
 
-      console.log('Login: Profile fetch result:', {
-        hasProfile: !!userProfile,
-        time: Date.now() - startTime + 'ms'
-      });
-
-      // If profile doesn't exist, create one
-      if (!userProfile) {
-        console.log('Login: Creating new profile for user');
-        userProfile = await supabase
+      if (profileError) {
+        console.log('Creating new profile for user');
+        const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert([{
             id: authData.user.id,
@@ -73,79 +57,42 @@ export default function Login() {
             last_sign_in_at: new Date().toISOString()
           }])
           .select('role')
-          .single()
-          .then(({ data, error }) => {
-            if (error || !data) {
-              console.error('Profile creation error:', error);
-              return null;
-            }
-            return data;
-          });
+          .single();
 
-        if (!userProfile) {
-          toast.dismiss(toastId);
-          toast.error('Error creating profile. Please try again.');
+        if (createError) {
+          toast.dismiss(loadingToast);
+          toast.error('Error setting up user profile');
           return;
         }
-      }
 
-      // Success! Navigate based on role
-      toast.dismiss(toastId);
-      toast.success('Login successful!');
-
-      const userRole = userProfile.role.toUpperCase();
-      console.log('Login: Navigation with role:', userRole);
-
-      // Small delay to ensure toast is visible
-      setTimeout(() => {
-        switch(userRole) {
-          case 'ADMIN':
-            navigate('/admin/films');
-            break;
-          case 'FILMMAKER':
-            navigate('/filmmaker/dashboard');
-            break;
-          case 'VIEWER':
-            navigate('/viewer/dashboard');
-            break;
-          default:
-            toast.error('Invalid user role');
-            navigate('/');
-        }
-      }, 500);
-
-    } catch (error) {
-      console.error('Login: Unexpected error:', error);
-      toast.error('An unexpected error occurred. Please try again.');
-    }
-  };
-
-  // Simplify the test sign-in function
-  const handleTestSignIn = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) {
-        console.error('Test Login Error:', error);
-        alert('Login failed: ' + error.message);
+        toast.dismiss(loadingToast);
+        toast.success('Welcome! Redirecting...');
+        navigate('/viewer/dashboard');
         return;
       }
 
-      if (data?.user) {
-        console.log('Test Login Success:', {
-          id: data.user.id,
-          email: data.user.email,
-          lastSignIn: data.user.last_sign_in_at
-        });
-        alert('Login successful! User ID: ' + data.user.id);
+      // Navigate based on user role
+      toast.dismiss(loadingToast);
+      toast.success('Login successful!');
+      
+      const userRole = profile.role.toUpperCase();
+      switch(userRole) {
+        case 'ADMIN':
+          navigate('/admin/films');
+          break;
+        case 'FILMMAKER':
+          navigate('/filmmaker/dashboard');
+          break;
+        case 'VIEWER':
+        default:
+          navigate('/viewer/dashboard');
       }
-    } catch (err) {
-      console.error('Test Login Error:', err);
-      alert('Unexpected error during test login');
+
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -200,31 +147,28 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="flex flex-col space-y-4">
+          <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isLoading}
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                isLoading 
+                  ? 'bg-indigo-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+              }`}
             >
-              Sign in
-            </button>
-
-            <button
-              type="button"
-              onClick={handleTestSignIn}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Test Sign In Only
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
-          <div className="text-center space-y-4">
+          <div className="text-center">
             <a
               href="/register"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
               Don't have an account? Register
             </a>
-            <div>
+            <div className="mt-2">
               <button
                 type="button"
                 onClick={() => navigate('/')}
