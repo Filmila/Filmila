@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
