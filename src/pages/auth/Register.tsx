@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { } = useAuth();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -62,16 +62,7 @@ export default function Register() {
       console.log('Starting Supabase registration...');
 
       // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            role: formData.role
-          }
-        }
-      });
+      const { data: authData, error: authError } = await signUp(formData.email, formData.password);
 
       if (authError) {
         console.error('Registration error:', authError);
@@ -90,35 +81,8 @@ export default function Register() {
         return;
       }
 
-      setDebugInfo('Creating user profile...');
-      console.log('Creating user profile for:', authData.user.id);
-
-      // Create profile with role
-      console.log('Creating profile with role:', formData.role);
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            role: formData.role,
-            email: formData.email,
-            display_name: formData.email.split('@')[0],
-            created_at: new Date().toISOString(),
-            last_sign_in_at: new Date().toISOString()
-          }
-        ])
-        .select()
-        .single();
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        toast.dismiss(loadingToast);
-        toast.error('Failed to create user profile');
-        setDebugInfo(`Profile error: ${profileError.message}`);
-        return;
-      }
-
-      console.log('Profile created successfully with role:', formData.role);
+      // Profile will be created automatically by the database trigger
+      console.log('Registration successful, profile will be created by trigger');
       setDebugInfo('Registration successful!');
 
       // Show success message

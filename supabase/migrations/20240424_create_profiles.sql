@@ -11,23 +11,27 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Create RLS policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Allow users to read their own profile
-CREATE POLICY "Users can read own profile"
+-- Enable users to view their own data only
+CREATE POLICY "Enable users to view their own data only"
     ON public.profiles
     FOR SELECT
-    USING (auth.uid() = id);
+    TO authenticated
+    USING ((select auth.uid()) = id);
 
--- Allow users to update their own profile
-CREATE POLICY "Users can update own profile"
+-- Enable users to update their own data only
+CREATE POLICY "Enable users to update their own data only"
     ON public.profiles
     FOR UPDATE
-    USING (auth.uid() = id);
+    TO authenticated
+    USING ((select auth.uid()) = id)
+    WITH CHECK ((select auth.uid()) = id);
 
--- Allow authenticated users to read all profiles
-CREATE POLICY "Authenticated users can read all profiles"
+-- Enable insert for users based on user_id
+CREATE POLICY "Enable insert for users based on user_id"
     ON public.profiles
-    FOR SELECT
-    USING (auth.role() = 'authenticated');
+    FOR INSERT
+    TO authenticated
+    WITH CHECK ((select auth.uid()) = id);
 
 -- Create index on id
 CREATE INDEX IF NOT EXISTS profiles_id_idx ON public.profiles(id);
