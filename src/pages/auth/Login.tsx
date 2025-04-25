@@ -45,51 +45,74 @@ export default function Login() {
       }
 
       // Now fetch the user's profile
-      const { data: profile, error: profileError } = await supabase
+      let userProfile = await supabase
         .from('profiles')
         .select('role')
         .eq('id', authData.user.id)
-        .single();
+        .single()
+        .then(({ data, error }) => {
+          if (error || !data) return null;
+          return data;
+        });
 
       console.log('Login: Profile fetch result:', {
-        hasProfile: !!profile,
-        error: profileError?.message,
+        hasProfile: !!userProfile,
         time: Date.now() - startTime + 'ms'
       });
 
-      if (profileError) {
-        toast.dismiss(toastId);
-        console.error('Profile fetch error:', profileError);
-        toast.error('Error loading profile. Please try again.');
-        return;
-      }
+      // If profile doesn't exist, create one
+      if (!userProfile) {
+        console.log('Login: Creating new profile for user');
+        userProfile = await supabase
+          .from('profiles')
+          .insert([{
+            id: authData.user.id,
+            email: authData.user.email,
+            role: 'VIEWER',
+            created_at: new Date().toISOString(),
+            last_sign_in_at: new Date().toISOString()
+          }])
+          .select('role')
+          .single()
+          .then(({ data, error }) => {
+            if (error || !data) {
+              console.error('Profile creation error:', error);
+              return null;
+            }
+            return data;
+          });
 
-      if (!profile) {
-        toast.dismiss(toastId);
-        toast.error('Profile not found. Please register first.');
-        return;
+        if (!userProfile) {
+          toast.dismiss(toastId);
+          toast.error('Error creating profile. Please try again.');
+          return;
+        }
       }
 
       // Success! Navigate based on role
       toast.dismiss(toastId);
       toast.success('Login successful!');
 
-      const userRole = profile.role.toUpperCase();
+      const userRole = userProfile.role.toUpperCase();
       console.log('Login: Navigation with role:', userRole);
 
-      switch(userRole) {
-        case 'ADMIN':
-          navigate('/admin/films');
-          break;
-        case 'FILMMAKER':
-          navigate('/filmmaker/dashboard');
-          break;
-        case 'VIEWER':
-          navigate('/viewer/dashboard');
-          break;
-        default:
-          toast.error('Invalid user role');
-      }
+      // Small delay to ensure toast is visible
+      setTimeout(() => {
+        switch(userRole) {
+          case 'ADMIN':
+            navigate('/admin/films');
+            break;
+          case 'FILMMAKER':
+            navigate('/filmmaker/dashboard');
+            break;
+          case 'VIEWER':
+            navigate('/viewer/dashboard');
+            break;
+          default:
+            toast.error('Invalid user role');
+            navigate('/');
+        }
+      }, 500);
 
     } catch (error) {
       console.error('Login: Unexpected error:', error);
