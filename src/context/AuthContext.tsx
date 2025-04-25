@@ -2,8 +2,16 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '../config/supabase';
 import { User } from '@supabase/supabase-js';
 
+interface Profile {
+  id: string;
+  email: string;
+  role: string;
+  created_at?: string;
+  last_sign_in_at?: string;
+}
+
 interface CustomUser extends User {
-  customRole?: string;
+  profile?: Profile;
 }
 
 interface AuthContextType {
@@ -46,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (session?.user && mounted) {
           console.log('Found existing session for user:', session.user.email);
-          await updateUserWithRole(session.user);
+          await updateUserWithProfile(session.user);
         } else {
           console.log('No active session found');
           setUser(null);
@@ -75,8 +83,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (session?.user && mounted) {
-        console.log('Session updated, updating user role');
-        await updateUserWithRole(session.user);
+        console.log('Session updated, updating user profile');
+        await updateUserWithProfile(session.user);
       }
       if (mounted) {
         setLoading(false);
@@ -89,9 +97,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const updateUserWithRole = async (authUser: User): Promise<CustomUser> => {
+  const updateUserWithProfile = async (authUser: User): Promise<CustomUser> => {
     if (!authUser) {
-      console.log('updateUserWithRole: No auth user provided');
+      console.log('updateUserWithProfile: No auth user provided');
       setUser(null);
       return authUser as CustomUser;
     }
@@ -111,58 +119,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(`Failed to fetch profile: ${profileError.message}`);
       }
 
-      if (profileData) {
-        console.log('Found existing profile:', profileData);
-        const customUser: CustomUser = {
+      if (!profileData) {
+        console.log('No profile found for user');
+        // Don't create profile here - it should be created during registration
+        // or by the database trigger
+        const userWithoutProfile: CustomUser = {
           ...authUser,
-          customRole: profileData.role || 'VIEWER' // Ensure there's always a role
+          profile: undefined
         };
-        setUser(customUser);
-        return customUser;
+        setUser(userWithoutProfile);
+        return userWithoutProfile;
       }
 
-      // If no profile exists, create one
-      console.log('No profile found, creating new profile');
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: authUser.id,
-            email: authUser.email,
-            role: 'VIEWER',
-            created_at: new Date().toISOString(),
-            last_sign_in_at: new Date().toISOString()
-          }
-        ])
-        .select('*')
-        .single();
-
-      if (createError) {
-        console.error('Error creating profile:', createError.message);
-        throw new Error(`Failed to create profile: ${createError.message}`);
-      }
-
-      if (!newProfile) {
-        throw new Error('Profile creation succeeded but no profile was returned');
-      }
-
-      console.log('Created new profile:', newProfile);
-      const userWithNewRole: CustomUser = {
+      console.log('Found existing profile:', profileData);
+      const userWithProfile: CustomUser = {
         ...authUser,
-        customRole: newProfile.role || 'VIEWER' // Ensure there's always a role
+        profile: profileData
       };
-      setUser(userWithNewRole);
-      return userWithNewRole;
+      setUser(userWithProfile);
+      return userWithProfile;
 
     } catch (error) {
-      console.error('Error in updateUserWithRole:', error instanceof Error ? error.message : error);
-      // Set a default role if profile creation fails
-      const defaultUser: CustomUser = {
+      console.error('Error in updateUserWithProfile:', error instanceof Error ? error.message : error);
+      const userWithoutProfile: CustomUser = {
         ...authUser,
-        customRole: 'VIEWER'
+        profile: undefined
       };
-      setUser(defaultUser);
-      return defaultUser;
+      setUser(userWithoutProfile);
+      return userWithoutProfile;
     }
   };
 
@@ -187,26 +171,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { data: null, error: new Error('No user data returned') };
       }
 
-      // Fetch user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+      // Get the user's profile
+      const userWithProfile = await updateUserWithProfile(data.user);
+      return { data: { user: userWithProfile }, error: null };
 
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        // Don't fail the sign in if profile fetch fails
-        return { data: { user: data.user as CustomUser }, error: null };
-      }
-
-      // Create custom user with role
-      const customUser: CustomUser = {
-        ...data.user,
-        customRole: profileData?.role
-      };
-
-      return { data: { user: customUser }, error: null };
     } catch (error) {
       console.error('Unexpected error during sign in:', error);
       return { data: null, error: error instanceof Error ? error : new Error('An unknown error occurred') };
@@ -240,7 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       console.log('Sign up successful, creating profile');
-      const customUser = await updateUserWithRole(data.user);
+      const customUser = await updateUserWithProfile(data.user);
       return { data: { user: customUser }, error: null };
       
     } catch (error) {

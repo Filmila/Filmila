@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../config/supabase';
+import { supabase, checkSupabaseHealth } from '../../config/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,8 +17,8 @@ export default function Login() {
 
     try {
       // First check if we can connect to Supabase
-      const { error: healthError } = await supabase.rpc('check_connection_health');
-      if (healthError) {
+      const isHealthy = await checkSupabaseHealth();
+      if (!isHealthy) {
         throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
       }
 
@@ -28,6 +28,8 @@ export default function Login() {
       if (signInError) {
         if (signInError.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password. Please try again.');
+        } else if (signInError.message.includes('timeout')) {
+          throw new Error('Login request timed out. Please check your internet connection and try again.');
         }
         throw signInError;
       }
@@ -36,8 +38,21 @@ export default function Login() {
         throw new Error('Login failed. Please try again.');
       }
 
+      // Get the user's profile to determine their role
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw new Error('Unable to fetch user profile. Please try again.');
+      }
+
+      const role = (profileData?.role || 'VIEWER').toUpperCase();
+
       // Determine redirect based on role
-      const role = data.user.customRole?.toUpperCase();
       switch (role) {
         case 'ADMIN':
           navigate('/admin/dashboard');
@@ -49,13 +64,14 @@ export default function Login() {
           navigate('/viewer/dashboard');
           break;
         default:
-          console.error('Unknown role:', role);
+          console.warn('Unknown or missing role:', role);
           navigate('/viewer/dashboard'); // Default to viewer dashboard
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Always reset loading state
     }
   };
 
