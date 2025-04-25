@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { supabase } from '../../config/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -19,117 +20,28 @@ export default function Login() {
     try {
       console.log('Starting authentication process...');
       
-      // Step 1: Authenticate user
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
+      const { data, error } = await signIn(formData.email, formData.password);
 
-      if (authError) {
-        console.error('Authentication failed:', authError);
+      if (error) {
+        console.error('Authentication failed:', error);
         toast.dismiss(loadingToast);
-        toast.error(authError.message || 'Invalid credentials');
+        toast.error(error.message || 'Invalid credentials');
         return;
       }
 
-      if (!authData?.user) {
+      if (!data?.user) {
         console.error('No user data received after authentication');
         toast.dismiss(loadingToast);
         toast.error('Authentication failed. Please try again.');
         return;
       }
 
-      console.log('Authentication successful. User ID:', authData.user.id);
-
-      // Step 2: Get or create user profile
-      let attempts = 0;
-      const maxAttempts = 3;
-      let userProfile = null;
-
-      while (attempts < maxAttempts && !userProfile) {
-        attempts++;
-        console.log(`Attempt ${attempts} to get/create profile...`);
-
-        try {
-          // First, try to get existing profile
-          const { data: existingProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', authData.user.id)
-            .single();
-
-          if (!profileError && existingProfile) {
-            console.log('Existing profile found:', existingProfile);
-            userProfile = existingProfile;
-            break;
-          }
-
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Unexpected error fetching profile:', profileError);
-            continue;
-          }
-
-          // Profile doesn't exist, create one
-          console.log('Creating new profile for user:', authData.user.id);
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .upsert([
-              {
-                id: authData.user.id,
-                email: authData.user.email,
-                role: 'VIEWER',
-                created_at: new Date().toISOString(),
-                last_sign_in_at: new Date().toISOString()
-              }
-            ], {
-              onConflict: 'id'
-            })
-            .select()
-            .single();
-
-          if (createError) {
-            console.error(`Failed to create profile (attempt ${attempts}):`, createError);
-            if (attempts === maxAttempts) {
-              throw createError;
-            }
-            // Wait before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-            continue;
-          }
-
-          console.log('Successfully created new profile:', newProfile);
-          userProfile = newProfile;
-          break;
-        } catch (error) {
-          console.error(`Error in attempt ${attempts}:`, error);
-          if (attempts === maxAttempts) {
-            throw error;
-          }
-        }
-      }
-
-      if (!userProfile) {
-        throw new Error('Failed to get or create user profile after multiple attempts');
-      }
-
-      // Update last sign in time
-      console.log('Updating last sign in time...');
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ last_sign_in_at: new Date().toISOString() })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('Failed to update last sign in time:', updateError);
-        // Non-critical error, don't throw
-      }
-
-      // Step 3: Navigate based on role
-      console.log('Navigating based on role:', userProfile.role);
+      console.log('Authentication successful. User:', data.user);
       toast.dismiss(loadingToast);
       toast.success('Login successful! Redirecting...');
 
-      const userRole = userProfile.role.toUpperCase();
+      // Navigation will be handled by AuthContext based on user role
+      const userRole = data.user.customRole?.toUpperCase() || 'VIEWER';
       switch (userRole) {
         case 'ADMIN':
           navigate('/admin/films');
