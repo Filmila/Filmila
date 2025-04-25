@@ -17,6 +17,8 @@ export default function Login() {
     const loadingToast = toast.loading('Signing in...');
     
     try {
+      console.log('Starting authentication process...');
+      
       // Step 1: Authenticate user
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
@@ -37,50 +39,93 @@ export default function Login() {
         return;
       }
 
+      console.log('Authentication successful. User ID:', authData.user.id);
+
       // Step 2: Get or create user profile
-      let userProfile;
-      const { data: existingProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
+      let attempts = 0;
+      const maxAttempts = 3;
+      let userProfile = null;
 
-      if (profileError) {
-        console.log('Profile not found, creating new profile');
-        // Create new profile
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: authData.user.id,
-              email: authData.user.email,
-              role: 'VIEWER',
-              created_at: new Date().toISOString(),
-              last_sign_in_at: new Date().toISOString()
+      while (attempts < maxAttempts && !userProfile) {
+        attempts++;
+        console.log(`Attempt ${attempts} to get/create profile...`);
+
+        try {
+          // First, try to get existing profile
+          const { data: existingProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+          if (!profileError && existingProfile) {
+            console.log('Existing profile found:', existingProfile);
+            userProfile = existingProfile;
+            break;
+          }
+
+          if (profileError && profileError.code !== 'PGRST116') {
+            console.error('Unexpected error fetching profile:', profileError);
+            continue;
+          }
+
+          // Profile doesn't exist, create one
+          console.log('Creating new profile for user:', authData.user.id);
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .upsert([
+              {
+                id: authData.user.id,
+                email: authData.user.email,
+                role: 'VIEWER',
+                created_at: new Date().toISOString(),
+                last_sign_in_at: new Date().toISOString()
+              }
+            ], {
+              onConflict: 'id'
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error(`Failed to create profile (attempt ${attempts}):`, createError);
+            if (attempts === maxAttempts) {
+              throw createError;
             }
-          ])
-          .select()
-          .single();
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+            continue;
+          }
 
-        if (createError) {
-          console.error('Failed to create profile:', createError);
-          toast.dismiss(loadingToast);
-          toast.error('Failed to create user profile');
-          return;
+          console.log('Successfully created new profile:', newProfile);
+          userProfile = newProfile;
+          break;
+        } catch (error) {
+          console.error(`Error in attempt ${attempts}:`, error);
+          if (attempts === maxAttempts) {
+            throw error;
+          }
         }
+      }
 
-        userProfile = newProfile;
-      } else {
-        userProfile = existingProfile;
-        
-        // Update last sign in time
-        await supabase
-          .from('profiles')
-          .update({ last_sign_in_at: new Date().toISOString() })
-          .eq('id', authData.user.id);
+      if (!userProfile) {
+        throw new Error('Failed to get or create user profile after multiple attempts');
+      }
+
+      // Update last sign in time
+      console.log('Updating last sign in time...');
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ last_sign_in_at: new Date().toISOString() })
+        .eq('id', authData.user.id);
+
+      if (updateError) {
+        console.error('Failed to update last sign in time:', updateError);
+        // Non-critical error, don't throw
       }
 
       // Step 3: Navigate based on role
+      console.log('Navigating based on role:', userProfile.role);
       toast.dismiss(loadingToast);
       toast.success('Login successful! Redirecting...');
 
