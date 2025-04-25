@@ -12,6 +12,7 @@ interface Profile {
 
 interface CustomUser extends User {
   profile?: Profile;
+  isProfileLoading?: boolean;
 }
 
 interface AuthContextType {
@@ -40,6 +41,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Function to update user state immediately without profile
+  const setUserWithoutProfile = (authUser: User | null) => {
+    if (!authUser) {
+      setUser(null);
+      return;
+    }
+    
+    const userWithoutProfile: CustomUser = {
+      ...authUser,
+      profile: undefined,
+      isProfileLoading: true
+    };
+    setUser(userWithoutProfile);
+    return userWithoutProfile;
+  };
+
+  // Function to start profile fetch in background
+  const startProfileFetch = async (authUser: User) => {
+    try {
+      console.log('Starting background profile fetch for:', authUser.email);
+      const profileData = await fetchProfileWithTimeout(authUser);
+
+      if (!profileData) {
+        console.log('No profile found, creating default profile in background');
+        const defaultProfile = await createDefaultProfile(authUser);
+        if (defaultProfile) {
+          setUser(current => current ? { ...current, profile: defaultProfile, isProfileLoading: false } : null);
+          return;
+        }
+      } else {
+        console.log('Profile fetched successfully:', profileData);
+        setUser(current => current ? { ...current, profile: profileData, isProfileLoading: false } : null);
+        return;
+      }
+
+      // If we get here, no profile was created or fetched
+      setUser(current => current ? { ...current, isProfileLoading: false } : null);
+      
+    } catch (error) {
+      console.error('Background profile fetch failed:', error);
+      setUser(current => current ? { ...current, isProfileLoading: false } : null);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -54,7 +99,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (session?.user && mounted) {
           console.log('Found existing session for user:', session.user.email);
-          await updateUserWithProfile(session.user);
+          // Set user immediately without profile
+          setUserWithoutProfile(session.user);
+          // Start profile fetch in background
+          startProfileFetch(session.user);
         } else {
           console.log('No active session found');
           setUser(null);
@@ -83,8 +131,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (session?.user && mounted) {
-        console.log('Session updated, updating user profile');
-        await updateUserWithProfile(session.user);
+        console.log('Session updated, setting user without profile');
+        // Set user immediately without profile
+        setUserWithoutProfile(session.user);
+        // Start profile fetch in background
+        startProfileFetch(session.user);
       }
       if (mounted) {
         setLoading(false);
@@ -97,61 +148,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const updateUserWithProfile = async (authUser: User): Promise<CustomUser> => {
-    if (!authUser) {
-      console.log('updateUserWithProfile: No auth user provided');
-      setUser(null);
-      return authUser as CustomUser;
-    }
-
+  const createDefaultProfile = async (authUser: User): Promise<Profile | null> => {
     try {
-      console.log('Fetching profile for user:', authUser.email);
-      
-      // Try to get existing profile
-      const { data: profileData, error: profileError } = await supabase
+      const defaultProfile = {
+        id: authUser.id,
+        email: authUser.email!,
+        role: 'VIEWER',
+        created_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([defaultProfile])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating default profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in createDefaultProfile:', error);
+      return null;
+    }
+  };
+
+  const fetchProfileWithTimeout = async (authUser: User, timeoutMs: number = 5000): Promise<Profile | null> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
+        .abortSignal(controller.signal)
         .single();
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError.message);
-        throw new Error(`Failed to fetch profile: ${profileError.message}`);
+      clearTimeout(timeoutId);
+
+      if (error) {
+        if (error.message.includes('abort')) {
+          console.log('Profile fetch timed out');
+          return null;
+        }
+        throw error;
       }
 
-      if (!profileData) {
-        console.log('No profile found for user');
-        // Don't create profile here - it should be created during registration
-        // or by the database trigger
-        const userWithoutProfile: CustomUser = {
-          ...authUser,
-          profile: undefined
-        };
-        setUser(userWithoutProfile);
-        return userWithoutProfile;
-      }
-
-      console.log('Found existing profile:', profileData);
-      const userWithProfile: CustomUser = {
-        ...authUser,
-        profile: profileData
-      };
-      setUser(userWithProfile);
-      return userWithProfile;
-
+      return data;
     } catch (error) {
-      console.error('Error in updateUserWithProfile:', error instanceof Error ? error.message : error);
-      const userWithoutProfile: CustomUser = {
-        ...authUser,
-        profile: undefined
-      };
-      setUser(userWithoutProfile);
-      return userWithoutProfile;
+      console.error('Error fetching profile:', error);
+      return null;
     }
   };
 
   const signIn = async (email: string, password: string): Promise<{ data: { user: CustomUser } | null; error: Error | null }> => {
     try {
+      setLoading(true);
+      
       // Attempt sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -168,13 +224,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { data: null, error: new Error('No user data returned') };
       }
 
-      // Get the user's profile
-      const userWithProfile = await updateUserWithProfile(data.user);
-      return { data: { user: userWithProfile }, error: null };
+      // Set user immediately without profile
+      const userWithoutProfile = setUserWithoutProfile(data.user);
+      
+      // Start profile fetch in background
+      startProfileFetch(data.user);
+
+      return { data: { user: userWithoutProfile! }, error: null };
 
     } catch (error) {
       console.error('Unexpected error during sign in:', error);
       return { data: null, error: error instanceof Error ? error : new Error('An unknown error occurred') };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -204,9 +266,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { data: null, error: new Error('Sign up failed') };
       }
 
-      console.log('Sign up successful, creating profile');
-      const customUser = await updateUserWithProfile(data.user);
-      return { data: { user: customUser }, error: null };
+      console.log('Sign up successful, setting initial user state');
+      const userWithoutProfile = setUserWithoutProfile(data.user);
+      startProfileFetch(data.user);
+      return { data: { user: userWithoutProfile! }, error: null };
       
     } catch (error) {
       console.error('Unexpected error in signUp:', error);

@@ -8,43 +8,20 @@ export default function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loginStartTime, setLoginStartTime] = useState<number | null>(null);
 
-  // Auto-redirect if user becomes authenticated
+  // Auto-redirect as soon as user exists, don't wait for profile
   useEffect(() => {
     if (user) {
+      // Default to viewer dashboard if no profile yet
       const role = (user.profile?.role || 'VIEWER').toUpperCase();
       handleRedirect(role);
     }
   }, [user]);
 
-  // Handle timeout for long-running sign-in
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    if (isLoading && loginStartTime) {
-      const TIMEOUT_DURATION = 10000; // 10 seconds
-      timeoutId = setTimeout(() => {
-        const elapsedTime = Date.now() - loginStartTime;
-        if (elapsedTime >= TIMEOUT_DURATION) {
-          setIsLoading(false);
-          setError('Sign in is taking longer than expected. You will be redirected once complete.');
-        }
-      }, TIMEOUT_DURATION);
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [isLoading, loginStartTime]);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    setLoginStartTime(Date.now());
 
     try {
       const { data, error: signInError } = await signIn(formData.email, formData.password);
@@ -64,7 +41,8 @@ export default function Login() {
         throw new Error('Login failed. Please try again.');
       }
 
-      // Redirect will happen automatically through the useEffect
+      // Redirect will happen automatically through useEffect
+      // Profile loading happens in background
       
     } catch (err) {
       console.error('Login error:', err);
