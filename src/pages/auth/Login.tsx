@@ -1,21 +1,52 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginStartTime, setLoginStartTime] = useState<number | null>(null);
+
+  // Auto-redirect if user becomes authenticated
+  useEffect(() => {
+    if (user) {
+      const role = (user.profile?.role || 'VIEWER').toUpperCase();
+      handleRedirect(role);
+    }
+  }, [user]);
+
+  // Handle timeout for long-running sign-in
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    if (isLoading && loginStartTime) {
+      const TIMEOUT_DURATION = 10000; // 10 seconds
+      timeoutId = setTimeout(() => {
+        const elapsedTime = Date.now() - loginStartTime;
+        if (elapsedTime >= TIMEOUT_DURATION) {
+          setIsLoading(false);
+          setError('Sign in is taking longer than expected. You will be redirected once complete.');
+        }
+      }, TIMEOUT_DURATION);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isLoading, loginStartTime]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    setLoginStartTime(Date.now());
 
     try {
-      // Attempt to sign in
       const { data, error: signInError } = await signIn(formData.email, formData.password);
       
       if (signInError) {
@@ -33,14 +64,11 @@ export default function Login() {
         throw new Error('Login failed. Please try again.');
       }
 
-      // Use the profile data from the signIn response
-      const role = (data.user.profile?.role || 'VIEWER').toUpperCase();
-      handleRedirect(role);
+      // Redirect will happen automatically through the useEffect
       
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
