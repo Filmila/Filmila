@@ -39,8 +39,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   }
 
   // Route-specific redirects
-  if (userRole === 'FILMMAKER' && window.location.pathname === '/') {
-    console.log('Filmmaker at root, redirecting to dashboard');
+  if (userRole === 'FILMMAKER' && (window.location.pathname === '/' || window.location.pathname === '/login')) {
+    console.log('Filmmaker at root or login, redirecting to dashboard');
     return <Navigate to="/filmmaker/dashboard" replace />;
   }
 
