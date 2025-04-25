@@ -152,9 +152,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string): Promise<{ data: { user: CustomUser } | null; error: Error | null }> => {
     try {
-      // Clear any existing session first
-      await supabase.auth.signOut();
-      
       // Attempt sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
