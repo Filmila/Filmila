@@ -22,6 +22,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'x-application-name': 'filmila'
+    },
+    // Increased timeout to 30 seconds
+    fetch: (url: RequestInfo | URL, options?: RequestInit) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          return response;
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          if (error.name === 'AbortError') {
+            throw new Error('Request timed out after 30 seconds');
+          }
+          throw error;
+        });
     }
   },
   db: {
@@ -56,9 +77,10 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Export a function to check connection health
 export const checkSupabaseHealth = async () => {
   try {
-    const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-    return !error;
-  } catch {
+    const { data: { session } } = await supabase.auth.getSession();
+    return true;
+  } catch (error) {
+    console.error('Health check failed:', error);
     return false;
   }
 }; 

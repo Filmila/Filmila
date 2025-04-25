@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { supabase, checkSupabaseHealth } from '../../config/supabase';
+import { supabase } from '../../config/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,12 +16,6 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // First check if we can connect to Supabase
-      const isHealthy = await checkSupabaseHealth();
-      if (!isHealthy) {
-        throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
-      }
-
       // Attempt to sign in
       const { data, error: signInError } = await signIn(formData.email, formData.password);
       
@@ -29,7 +23,9 @@ export default function Login() {
         if (signInError.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password. Please try again.');
         } else if (signInError.message.includes('timeout')) {
-          throw new Error('Login request timed out. Please check your internet connection and try again.');
+          throw new Error('Login request timed out. Please try again.');
+        } else if (signInError.message.includes('network')) {
+          throw new Error('Network error. Please check your internet connection and try again.');
         }
         throw signInError;
       }
@@ -47,31 +43,46 @@ export default function Login() {
       
       if (profileError) {
         console.error('Error fetching profile:', profileError);
-        throw new Error('Unable to fetch user profile. Please try again.');
+        // Create a default profile if one doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert([{ id: data.user.id, role: 'VIEWER', email: data.user.email }])
+          .select()
+          .single();
+          
+        if (createError) {
+          throw new Error('Unable to create user profile. Please try again.');
+        }
+        
+        // Use the new profile's role
+        const role = (newProfile?.role || 'VIEWER').toUpperCase();
+        handleRedirect(role);
+        return;
       }
 
       const role = (profileData?.role || 'VIEWER').toUpperCase();
-
-      // Determine redirect based on role
-      switch (role) {
-        case 'ADMIN':
-          navigate('/admin/dashboard');
-          break;
-        case 'FILMMAKER':
-          navigate('/filmmaker/dashboard');
-          break;
-        case 'VIEWER':
-          navigate('/viewer/dashboard');
-          break;
-        default:
-          console.warn('Unknown or missing role:', role);
-          navigate('/viewer/dashboard'); // Default to viewer dashboard
-      }
+      handleRedirect(role);
+      
     } catch (err) {
       console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false); // Always reset loading state
+      setIsLoading(false);
+    }
+  };
+
+  const handleRedirect = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        navigate('/admin/dashboard');
+        break;
+      case 'FILMMAKER':
+        navigate('/filmmaker/dashboard');
+        break;
+      case 'VIEWER':
+      default:
+        navigate('/viewer/dashboard');
+        break;
     }
   };
 
@@ -96,37 +107,36 @@ export default function Login() {
               </div>
             </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email" className="sr-only">Email address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                disabled={isLoading}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                disabled={isLoading}
-              />
-            </div>
+          
+          <div>
+            <label htmlFor="email" className="sr-only">Email address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+              placeholder="Email address"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <label htmlFor="password" className="sr-only">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+              placeholder="Password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              disabled={isLoading}
+            />
           </div>
 
           <div>
