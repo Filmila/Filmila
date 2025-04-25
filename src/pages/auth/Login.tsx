@@ -34,33 +34,8 @@ export default function Login() {
         throw new Error('Login failed. Please try again.');
       }
 
-      // Get the user's profile to determine their role
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-      
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        // Create a default profile if one doesn't exist
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert([{ id: data.user.id, role: 'VIEWER', email: data.user.email }])
-          .select()
-          .single();
-          
-        if (createError) {
-          throw new Error('Unable to create user profile. Please try again.');
-        }
-        
-        // Use the new profile's role
-        const role = (newProfile?.role || 'VIEWER').toUpperCase();
-        handleRedirect(role);
-        return;
-      }
-
-      const role = (profileData?.role || 'VIEWER').toUpperCase();
+      // Use the profile data from the signIn response
+      const role = (data.user.profile?.role || 'VIEWER').toUpperCase();
       handleRedirect(role);
       
     } catch (err) {
