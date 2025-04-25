@@ -11,7 +11,9 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'VIEWER' as 'ADMIN' | 'FILMMAKER' | 'VIEWER'
+    role: 'VIEWER' as 'ADMIN' | 'FILMMAKER' | 'VIEWER',
+    portfolioLink: '',
+    filmGenre: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
@@ -62,7 +64,16 @@ export default function Register() {
       console.log('Starting Supabase registration...');
 
       // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await signUp(formData.email, formData.password);
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            role: formData.role
+          }
+        }
+      });
 
       if (authError) {
         console.error('Registration error:', authError);
@@ -81,8 +92,28 @@ export default function Register() {
         return;
       }
 
-      // Profile will be created automatically by the database trigger
-      console.log('Registration successful, profile will be created by trigger');
+      // Create user profile in Supabase
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: authData.user.id,
+            email: formData.email,
+            role: formData.role,
+            portfolio_link: formData.role === 'FILMMAKER' ? formData.portfolioLink : null,
+            film_genre: formData.role === 'FILMMAKER' ? formData.filmGenre : null,
+          },
+        ]);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        toast.dismiss(loadingToast);
+        toast.error('Failed to create user profile');
+        setDebugInfo(`Profile error: ${profileError.message}`);
+        return;
+      }
+
+      console.log('Registration successful');
       setDebugInfo('Registration successful!');
 
       // Show success message
@@ -97,7 +128,9 @@ export default function Register() {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'VIEWER'
+        role: 'VIEWER',
+        portfolioLink: '',
+        filmGenre: ''
       });
 
       // Sign out the user to ensure they verify their email
