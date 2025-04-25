@@ -107,15 +107,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        throw profileError;
+        console.error('Error fetching profile:', profileError.message);
+        throw new Error(`Failed to fetch profile: ${profileError.message}`);
       }
 
       if (profileData) {
         console.log('Found existing profile:', profileData);
         const customUser: CustomUser = {
           ...authUser,
-          customRole: profileData.role
+          customRole: profileData.role || 'VIEWER' // Ensure there's always a role
         };
         setUser(customUser);
         return customUser;
@@ -138,20 +138,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (createError) {
-        console.error('Error creating profile:', createError);
-        throw createError;
+        console.error('Error creating profile:', createError.message);
+        throw new Error(`Failed to create profile: ${createError.message}`);
+      }
+
+      if (!newProfile) {
+        throw new Error('Profile creation succeeded but no profile was returned');
       }
 
       console.log('Created new profile:', newProfile);
       const userWithNewRole: CustomUser = {
         ...authUser,
-        customRole: newProfile.role
+        customRole: newProfile.role || 'VIEWER' // Ensure there's always a role
       };
       setUser(userWithNewRole);
       return userWithNewRole;
 
     } catch (error) {
-      console.error('Error in updateUserWithRole:', error);
+      console.error('Error in updateUserWithRole:', error instanceof Error ? error.message : error);
       // Set a default role if profile creation fails
       const defaultUser: CustomUser = {
         ...authUser,
