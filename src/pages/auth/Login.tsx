@@ -47,7 +47,7 @@ export default function Login() {
 
       if (profileError) {
         console.log('Creating new profile for user');
-        const { data: newProfile, error: createError } = await supabase
+        const { error: createError } = await supabase
           .from('profiles')
           .insert([{
             id: authData.user.id,
