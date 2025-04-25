@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../config/supabase';
-import { User } from '@supabase/supabase-js';
+import { User, AuthError } from '@supabase/supabase-js';
 
 interface CustomUser extends User {
   customRole?: string;
@@ -166,38 +166,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string): Promise<{ data: { user: CustomUser } | null; error: Error | null }> => {
     try {
-      console.log('Starting sign in process for:', email);
-      setLoading(true);
+      // Clear any existing session first
+      await supabase.auth.signOut();
       
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Attempt sign in
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) {
-        console.error('Sign in error:', authError);
-        return { data: null, error: authError };
+      if (error) {
+        console.error('Sign in error:', error);
+        return { data: null, error: new Error(error.message) };
       }
 
-      if (!authData?.user) {
-        console.error('No user data in auth response');
-        return { data: null, error: new Error('Authentication failed') };
+      if (!data.user) {
+        console.error('No user data returned after sign in');
+        return { data: null, error: new Error('No user data returned') };
       }
 
-      console.log('Sign in successful, updating user role');
-      const userWithRole = await updateUserWithRole(authData.user);
-      return { data: { user: userWithRole }, error: null };
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
 
-    } catch (error) {
-      console.error('Unexpected error in signIn:', error);
-      return { 
-        data: null, 
-        error: error instanceof Error ? error : new Error('An unknown error occurred')
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        // Don't fail the sign in if profile fetch fails
+        return { data: { user: data.user as CustomUser }, error: null };
+      }
+
+      // Create custom user with role
+      const customUser: CustomUser = {
+        ...data.user,
+        customRole: profileData?.role
       };
-    } finally {
-      setLoading(false);
+
+      return { data: { user: customUser }, error: null };
+    } catch (error) {
+      console.error('Unexpected error during sign in:', error);
+      return { data: null, error: error instanceof Error ? error : new Error('An unknown error occurred') };
     }
   };
 
