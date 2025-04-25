@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,6 +20,7 @@ export default function Register() {
     e.preventDefault();
     setIsLoading(true);
     setDebugInfo('Starting registration...');
+    const loadingToast = toast.loading('Creating your account...');
 
     try {
       // Log the attempt
@@ -34,7 +37,6 @@ export default function Register() {
         console.log('Email validation failed:', msg);
         toast.error(msg, { duration: 5000 });
         setDebugInfo('Email validation failed');
-        setIsLoading(false);
         return;
       }
 
@@ -44,7 +46,6 @@ export default function Register() {
         console.log('Password validation failed:', msg);
         toast.error(msg);
         setDebugInfo('Password validation failed');
-        setIsLoading(false);
         return;
       }
 
@@ -54,7 +55,6 @@ export default function Register() {
         console.log('Password match validation failed');
         toast.error(msg);
         setDebugInfo('Passwords do not match');
-        setIsLoading(false);
         return;
       }
 
@@ -73,24 +73,21 @@ export default function Register() {
         }
       });
 
-      console.log('Supabase auth response:', {
-        user: authData?.user ? 'User created' : 'No user created',
-        error: authError ? authError.message : 'No error',
-        session: authData?.session ? 'Session created' : 'No session',
-        fullError: authError
-      });
-
       if (authError) {
-        console.error('Supabase auth error:', authError);
-        setDebugInfo(`Auth error: ${authError.message || JSON.stringify(authError)}`);
-        throw authError;
+        console.error('Registration error:', authError);
+        toast.dismiss(loadingToast);
+        toast.error(authError.message);
+        setDebugInfo(`Auth error: ${authError.message}`);
+        return;
       }
 
-      if (!authData.user) {
+      if (!authData?.user) {
         const msg = 'No user data received from registration';
         console.error(msg);
+        toast.dismiss(loadingToast);
+        toast.error(msg);
         setDebugInfo(msg);
-        throw new Error(msg);
+        return;
       }
 
       setDebugInfo('Creating user profile...');
@@ -110,22 +107,22 @@ export default function Register() {
             last_sign_in_at: new Date().toISOString()
           }
         ])
-        .select('id')
+        .select()
         .single();
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
-        setDebugInfo(`Profile error: ${profileError.message || JSON.stringify(profileError)}`);
-        
-        // If profile creation fails, clean up by deleting the auth user
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        throw new Error('Failed to create user profile. Please try again.');
+        toast.dismiss(loadingToast);
+        toast.error('Failed to create user profile');
+        setDebugInfo(`Profile error: ${profileError.message}`);
+        return;
       }
 
       console.log('Profile created successfully with role:', formData.role);
       setDebugInfo('Registration successful!');
 
-      // Show success message with more details
+      // Show success message
+      toast.dismiss(loadingToast);
       toast.success(
         'Registration successful! Please check your email to verify your account before logging in.',
         { duration: 6000 }
@@ -139,29 +136,19 @@ export default function Register() {
         role: 'VIEWER'
       });
 
+      // Sign out the user to ensure they verify their email
+      await supabase.auth.signOut();
+
       // Redirect to login page after a short delay
       setTimeout(() => {
         navigate('/login');
       }, 2000);
 
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      setDebugInfo(`Error: ${error.message || JSON.stringify(error) || 'Unknown error occurred'}`);
-      
-      if (error.message?.includes('User already registered')) {
-        toast.error('This email is already registered. Please try logging in instead.');
-      } else if (error.message?.includes('Password should be at least')) {
-        toast.error('Password must be at least 6 characters long');
-      } else if (error.message?.includes('rate limit')) {
-        toast.error('Too many attempts. Please try again later.');
-      } else if (error.message?.includes('valid email')) {
-        toast.error('Please use a valid email address (e.g., user@gmail.com)', { duration: 5000 });
-      } else {
-        toast.error(
-          error.message || 'Registration failed. Please try again.',
-          { duration: 4000 }
-        );
-      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast.dismiss(loadingToast);
+      toast.error('An unexpected error occurred');
+      setDebugInfo(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
@@ -181,9 +168,11 @@ export default function Register() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Please use a valid email address (e.g., name@gmail.com)
-          </p>
+          {debugInfo && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              {debugInfo}
+            </p>
+          )}
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
@@ -197,8 +186,9 @@ export default function Register() {
                 type="email"
                 autoComplete="email"
                 required
+                disabled={isLoading}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address (e.g., name@gmail.com)"
+                placeholder="Email address"
                 value={formData.email}
                 onChange={handleChange}
               />
@@ -213,9 +203,9 @@ export default function Register() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={6}
+                disabled={isLoading}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password (min 6 characters)"
+                placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
               />
@@ -230,7 +220,7 @@ export default function Register() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={6}
+                disabled={isLoading}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
@@ -245,6 +235,7 @@ export default function Register() {
                 id="role"
                 name="role"
                 required
+                disabled={isLoading}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 value={formData.role}
                 onChange={handleChange}
@@ -259,17 +250,23 @@ export default function Register() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
+                isLoading 
+                  ? 'bg-indigo-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+              }`}
             >
-              {isLoading ? 'Registering...' : 'Register'}
+              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                {isLoading ? (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : null}
+              </span>
+              {isLoading ? 'Creating account...' : 'Create account'}
             </button>
           </div>
-
-          {debugInfo && (
-            <div className="mt-2 text-sm text-gray-600 text-center">
-              Status: {debugInfo}
-            </div>
-          )}
 
           <div className="text-center">
             <a
@@ -278,6 +275,15 @@ export default function Register() {
             >
               Already have an account? Sign in
             </a>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="font-medium text-gray-600 hover:text-gray-500"
+              >
+                Back to Homepage
+              </button>
+            </div>
           </div>
         </form>
       </div>
