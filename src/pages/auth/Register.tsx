@@ -69,17 +69,8 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
       setDebugInfo('Calling Supabase auth.signUp...');
       console.log('Starting Supabase registration...');
 
-      // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            role: formData.role
-          }
-        }
-      });
+      // Sign up with Auth Context
+      const { data: authData, error: authError } = await signUp(formData.email, formData.password);
 
       if (authError) {
         console.error('Registration error:', authError);
@@ -134,7 +125,7 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'VIEWER',
+        role: defaultRole,
         portfolioLink: '',
         filmGenre: ''
       });
