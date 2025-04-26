@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
-import toast from 'react-hot-toast';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
 
