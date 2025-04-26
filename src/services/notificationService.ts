@@ -73,42 +73,73 @@ export const notificationService = {
       const decodedEmail = decodeURIComponent(email).toLowerCase().trim();
       console.log(`Looking up user ID for email: ${decodedEmail}`);
 
-      // First try with exact match
-      const { data: exactProfiles, error: exactError } = await supabase
+      // Try different variations of the email
+      const emailVariations = [
+        decodedEmail,
+        decodedEmail.replace(/\s+/g, ''),  // Remove all whitespace
+        decodedEmail.replace(/-/g, '.'),    // Replace hyphens with dots
+        decodedEmail.replace(/\./g, '-')    // Replace dots with hyphens
+      ];
+
+      // Try each email variation
+      for (const emailVar of emailVariations) {
+        // Try exact match first
+        const { data: exactProfiles, error: exactError } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .eq('email', emailVar)
+          .limit(1);
+
+        if (exactError) {
+          console.error(`Error in exact email lookup for ${emailVar}:`, exactError);
+          continue;
+        }
+
+        if (exactProfiles && exactProfiles.length > 0) {
+          console.log('Found profile with exact match:', exactProfiles[0]);
+          return exactProfiles[0].id;
+        }
+
+        // Try case-insensitive match
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .ilike('email', emailVar)
+          .limit(1);
+
+        if (error) {
+          console.error(`Error in case-insensitive email lookup for ${emailVar}:`, error);
+          continue;
+        }
+
+        if (profiles && profiles.length > 0) {
+          console.log('Found profile with case-insensitive match:', profiles[0]);
+          return profiles[0].id;
+        }
+      }
+
+      // If we get here, we tried all variations and found nothing
+      console.warn(`No profile found for any variation of email: ${decodedEmail}`);
+      
+      // Create a new profile as a last resort
+      const { data: newProfile, error: createError } = await supabase
         .from('profiles')
-        .select('id, email')
-        .eq('email', decodedEmail)
-        .limit(1);
+        .insert([{
+          email: decodedEmail,
+          role: 'FILMMAKER',
+          created_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
 
-      if (exactError) {
-        console.error('Error in exact email lookup:', exactError);
+      if (createError) {
+        console.error('Error creating new profile:', createError);
         return null;
       }
 
-      if (exactProfiles && exactProfiles.length > 0) {
-        console.log('Found profile with exact match:', exactProfiles[0]);
-        return exactProfiles[0].id;
-      }
+      console.log('Created new profile:', newProfile);
+      return newProfile.id;
 
-      // If no exact match, try case-insensitive search
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .ilike('email', decodedEmail)
-        .limit(1);
-
-      if (error) {
-        console.error('Error fetching user ID:', error);
-        return null;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        console.warn(`No profile found for email: ${decodedEmail}`);
-        return null;
-      }
-
-      console.log('Found profile with case-insensitive match:', profiles[0]);
-      return profiles[0].id;
     } catch (error) {
       console.error('Error in getUserIdByEmail:', error);
       return null;
