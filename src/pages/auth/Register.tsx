@@ -23,126 +23,57 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setDebugInfo('Starting registration...');
-    const loadingToast = toast.loading('Creating your account...');
+    setError(null);
 
     try {
-      // Log the attempt
-      console.log('Registration attempt with:', { 
-        email: formData.email, 
-        role: formData.role,
-        passwordLength: formData.password.length 
+      // First, sign up the user
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
       });
 
-      // Validate email format with a more permissive regex
-      const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-      if (!emailRegex.test(formData.email)) {
-        const msg = 'Please enter a valid email address (e.g., user@gmail.com)';
-        console.log('Email validation failed:', msg);
-        toast.error(msg, { duration: 5000 });
-        setDebugInfo('Email validation failed');
-        return;
+      if (signUpError) {
+        throw new Error(signUpError.message);
       }
 
-      // Validate password length
-      if (formData.password.length < 6) {
-        const msg = 'Password must be at least 6 characters long';
-        console.log('Password validation failed:', msg);
-        toast.error(msg);
-        setDebugInfo('Password validation failed');
-        return;
+      if (!authData.user) {
+        throw new Error('Registration failed - no user returned');
       }
 
-      // Validate passwords match
-      if (formData.password !== formData.confirmPassword) {
-        const msg = 'Passwords do not match';
-        console.log('Password match validation failed');
-        toast.error(msg);
-        setDebugInfo('Passwords do not match');
-        return;
-      }
+      console.log('User registered successfully:', authData.user.email);
 
-      setDebugInfo('Calling Supabase auth.signUp...');
-      console.log('Starting Supabase registration...');
+      // Wait briefly for the database trigger to create the profile
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Sign up with Auth Context
-      const { data: authData, error: authError } = await signUp(formData.email, formData.password);
-
-      if (authError) {
-        console.error('Registration error:', authError);
-        toast.dismiss(loadingToast);
-        toast.error(authError.message);
-        setDebugInfo(`Auth error: ${authError.message}`);
-        return;
-      }
-
-      if (!authData?.user) {
-        const msg = 'No user data received from registration';
-        console.error(msg);
-        toast.dismiss(loadingToast);
-        toast.error(msg);
-        setDebugInfo(msg);
-        return;
-      }
-
-      // Create user profile in Supabase
-      const { error: profileError } = await supabase
+      // Verify profile was created
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .insert([
-          {
-            id: authData.user.id,
-            email: formData.email,
-            role: formData.role,
-            portfolio_link: formData.role === 'FILMMAKER' ? formData.portfolioLink : null,
-            film_genre: formData.role === 'FILMMAKER' ? formData.filmGenre : null,
-          },
-        ]);
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
 
       if (profileError) {
-        console.error('Profile creation error:', profileError);
-        toast.dismiss(loadingToast);
-        toast.error('Failed to create user profile');
-        setDebugInfo(`Profile error: ${profileError.message}`);
-        return;
+        console.error('Error verifying profile:', profileError.message);
+        // Don't throw here - the trigger might still be processing
       }
 
-      console.log('Registration successful');
-      setDebugInfo('Registration successful!');
+      if (!profileData) {
+        console.log('Profile not found after registration - trigger may still be processing');
+      } else {
+        console.log('Profile created successfully:', profileData);
+      }
 
-      // Show success message
-      toast.dismiss(loadingToast);
-      toast.success(
-        'Registration successful! Please check your email to verify your account before logging in.',
-        { duration: 6000 }
-      );
-
-      // Clear form
-      setFormData({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: defaultRole,
-        portfolioLink: '',
-        filmGenre: ''
-      });
-
-      // Sign out the user to ensure they verify their email
-      await supabase.auth.signOut();
-
-      // Redirect to login page after a short delay
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-
+      // Redirect to the appropriate page
+      navigate('/auth/verify-email');
+      
     } catch (error) {
-      console.error('Unexpected error:', error);
-      toast.dismiss(loadingToast);
-      toast.error('An unexpected error occurred');
-      setDebugInfo(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Registration error:', error instanceof Error ? error.message : error);
+      setError(error instanceof Error ? error.message : 'An error occurred during registration');
     } finally {
       setIsLoading(false);
     }
@@ -165,6 +96,11 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
           {debugInfo && (
             <p className="mt-2 text-center text-sm text-gray-600">
               {debugInfo}
+            </p>
+          )}
+          {error && (
+            <p className="mt-2 text-center text-sm text-red-600">
+              {error}
             </p>
           )}
         </div>

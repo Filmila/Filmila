@@ -9,6 +9,7 @@ import TestConnection from './pages/TestConnection';
 import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard';
 import UploadFilm from './pages/filmmaker/UploadFilm';
 import FilmsManagement from './pages/admin/FilmsManagement';
+import UserManagement from './pages/admin/UserManagement';
 import Settings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import ViewerLayout from './components/layout/ViewerLayout';
@@ -42,6 +43,7 @@ function App() {
                 <AdminLayout>
                   <Routes>
                     <Route path="films" element={<FilmsManagement />} />
+                    <Route path="users" element={<UserManagement />} />
                     <Route path="settings" element={<Settings />} />
                     <Route index element={<Navigate to="films" replace />} />
                   </Routes>

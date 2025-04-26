@@ -1,13 +1,19 @@
 import { supabase } from '../config/supabase';
 
+export type NotificationType = 'FILM_APPROVED' | 'FILM_REJECTED' | 'NEW_FILM_SUBMISSION';
+
+export interface NotificationMetadata {
+  filmTitle?: string;
+  message?: string;
+  [key: string]: any;
+}
+
 export interface Notification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  read: boolean;
+  recipient_id: string;
+  type: NotificationType;
+  metadata: NotificationMetadata;
   created_at: string;
+  read: boolean;
 }
 
 export const notificationService = {
@@ -63,24 +69,27 @@ export const notificationService = {
 
   async getUserIdByEmail(email: string): Promise<string | null> {
     try {
-      console.log('Fetching user ID for email:', email);
-      
-      // Get the user profile directly from the profiles table
-      const { data: profile, error } = await supabase
+      // Decode email if it contains encoded characters
+      const decodedEmail = decodeURIComponent(email).toLowerCase();
+      console.log(`Looking up user ID for email: ${decodedEmail}`);
+
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', email)
-        .single();
+        .ilike('email', decodedEmail)
+        .limit(1);
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          console.error('No profile found for email:', email);
-          return null;
-        }
+        console.error('Error fetching user ID:', error);
         throw error;
       }
 
-      return profile.id;
+      if (!profiles || profiles.length === 0) {
+        console.warn(`No profile found for email: ${decodedEmail}`);
+        return null;
+      }
+
+      return profiles[0].id;
     } catch (error) {
       console.error('Error in getUserIdByEmail:', error);
       throw error;
@@ -124,6 +133,37 @@ export const notificationService = {
     } catch (error) {
       console.error('Error sending rejection notification:', error);
       throw error;
+    }
+  },
+
+  async sendNotification(email: string, type: NotificationType, metadata: NotificationMetadata) {
+    try {
+      const userId = await this.getUserIdByEmail(email);
+      if (!userId) {
+        console.error(`No user found for email: ${email}`);
+        return;
+      }
+
+      const notification: Notification = {
+        recipient_id: userId,
+        type,
+        metadata,
+        created_at: new Date().toISOString(),
+        read: false
+      };
+
+      const { error } = await supabase
+        .from('notifications')
+        .insert([notification]);
+
+      if (error) {
+        console.error('Error sending notification:', error);
+        return;
+      }
+
+      console.log('Notification sent successfully');
+    } catch (error) {
+      console.error('Error in sendNotification:', error);
     }
   }
 };

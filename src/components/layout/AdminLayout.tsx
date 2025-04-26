@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   FilmIcon, 
   Cog6ToothIcon,
-  ArrowLeftOnRectangleIcon
+  ArrowLeftOnRectangleIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminLayoutProps {
@@ -17,6 +18,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const navigation = [
     { name: 'Films', href: '/admin/films', icon: FilmIcon },
+    { name: 'Users', href: '/admin/users', icon: UsersIcon },
     { name: 'Settings', href: '/admin/settings', icon: Cog6ToothIcon },
   ];
 
