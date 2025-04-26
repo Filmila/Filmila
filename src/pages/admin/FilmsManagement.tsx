@@ -325,18 +325,7 @@ const FilmsManagement: React.FC = () => {
 
       if (updateError) throw updateError;
 
-      // Try to send notification but don't block on failure
-      try {
-        await notificationService.sendFilmApprovalNotification(
-          film.title,
-          film.filmmaker
-        );
-      } catch (notificationError) {
-        console.warn('Failed to send notification:', notificationError);
-        // Continue with approval process even if notification fails
-      }
-
-      // Update local state
+      // Update local state first
       setFilms(films.map(f => 
         f.id === film.id 
           ? { 
@@ -351,10 +340,27 @@ const FilmsManagement: React.FC = () => {
           : f
       ));
 
+      // Show success message for film approval
       toast.success(`Film "${film.title}" has been approved`);
+
+      // Try to send notification but don't block on failure
+      try {
+        await notificationService.sendFilmApprovalNotification(
+          film.title,
+          film.filmmaker
+        );
+      } catch (notificationError) {
+        console.warn('Failed to send notification:', notificationError);
+        // Show a warning toast but don't fail the approval
+        toast('Film approved, but notification could not be sent to filmmaker', {
+          icon: '⚠️',
+          duration: 4000
+        });
+      }
     } catch (error) {
       console.error('Error approving film:', error);
       toast.error('Failed to approve film');
+      // Optionally revert the local state change here if needed
     }
   };
 

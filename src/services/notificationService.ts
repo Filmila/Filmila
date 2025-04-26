@@ -120,25 +120,7 @@ export const notificationService = {
 
       // If we get here, we tried all variations and found nothing
       console.warn(`No profile found for any variation of email: ${decodedEmail}`);
-      
-      // Create a new profile as a last resort
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert([{
-          email: decodedEmail,
-          role: 'FILMMAKER',
-          created_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('Error creating new profile:', createError);
-        return null;
-      }
-
-      console.log('Created new profile:', newProfile);
-      return newProfile.id;
+      return null;
 
     } catch (error) {
       console.error('Error in getUserIdByEmail:', error);
