@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { supabase } from '../config/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -40,6 +40,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileFetchInProgress = useRef<boolean>(false);
+  const lastAuthEvent = useRef<string | null>(null);
 
   // Function to update user state immediately without profile
   const setUserWithoutProfile = (authUser: User | null) => {
@@ -59,8 +61,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to start profile fetch in background
   const startProfileFetch = async (authUser: User) => {
+    // Prevent multiple concurrent profile fetches
+    if (profileFetchInProgress.current) {
+      console.log('Profile fetch already in progress, skipping');
+      return;
+    }
+
     try {
+      profileFetchInProgress.current = true;
       console.log('Starting background profile fetch for:', authUser.email);
+      
       const profileData = await fetchProfileWithTimeout(authUser);
 
       if (!profileData) {
@@ -82,6 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error('Background profile fetch failed:', error);
       setUser(current => current ? { ...current, isProfileLoading: false } : null);
+    } finally {
+      profileFetchInProgress.current = false;
     }
   };
 
@@ -99,9 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (session?.user && mounted) {
           console.log('Found existing session for user:', session.user.email);
-          // Set user immediately without profile
           setUserWithoutProfile(session.user);
-          // Start profile fetch in background
           startProfileFetch(session.user);
         } else {
           console.log('No active session found');
@@ -119,6 +129,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Prevent handling duplicate events
+      if (event === lastAuthEvent.current) {
+        console.log('Ignoring duplicate auth event:', event);
+        return;
+      }
+      lastAuthEvent.current = event;
+      
       console.log('Auth state changed:', event, session?.user?.email);
       
       if (event === 'SIGNED_OUT') {
@@ -130,13 +147,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (session?.user && mounted) {
-        console.log('Session updated, setting user without profile');
-        // Set user immediately without profile
+      // Only handle specific auth events
+      if (['SIGNED_IN', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event) && session?.user && mounted) {
+        console.log('Valid auth event, setting user without profile:', event);
         setUserWithoutProfile(session.user);
-        // Start profile fetch in background
-        startProfileFetch(session.user);
+        
+        // Only fetch profile for SIGNED_IN or if we don't have a profile yet
+        if (event === 'SIGNED_IN' || !user?.profile) {
+          startProfileFetch(session.user);
+        }
       }
+      
       if (mounted) {
         setLoading(false);
       }
