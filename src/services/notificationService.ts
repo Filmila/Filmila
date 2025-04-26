@@ -104,10 +104,12 @@ export const notificationService = {
       }
 
       return this.createNotification({
-        user_id: userId,
-        title: 'Film Approved',
-        message: `Your film "${filmTitle}" has been approved and is now available for viewing.`,
-        type: 'success',
+        recipient_id: userId,
+        type: 'FILM_APPROVED',
+        metadata: {
+          filmTitle,
+          message: `Your film "${filmTitle}" has been approved and is now available for viewing.`
+        },
         read: false
       });
     } catch (error) {
@@ -124,10 +126,12 @@ export const notificationService = {
       }
 
       return this.createNotification({
-        user_id: userId,
-        title: 'Film Rejected',
-        message: `Your film "${filmTitle}" was not approved. Reason: ${rejectionNote}`,
-        type: 'error',
+        recipient_id: userId,
+        type: 'FILM_REJECTED',
+        metadata: {
+          filmTitle,
+          message: `Your film "${filmTitle}" was not approved. Reason: ${rejectionNote}`
+        },
         read: false
       });
     } catch (error) {

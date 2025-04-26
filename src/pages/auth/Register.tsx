@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
 
@@ -12,7 +11,6 @@ interface RegisterProps {
 
 export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,7 +20,7 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
     filmGenre: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [debugInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
