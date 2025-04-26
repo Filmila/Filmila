@@ -4,6 +4,7 @@ import { Film } from '../../types';
 import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
 import { notificationService } from '../../services/notificationService';
+import { toast } from 'react-hot-toast';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
 type SortOrder = 'asc' | 'desc';
@@ -309,9 +310,10 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
-      const { error } = await supabase
+      // Update film status in database
+      const { error: updateError } = await supabase
         .from('films')
-        .update({
+        .update({ 
           status: 'approved',
           last_action: {
             type: 'approve',
@@ -321,7 +323,7 @@ const FilmsManagement: React.FC = () => {
         })
         .eq('id', film.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       // Send notification to filmmaker
       await notificationService.sendFilmApprovalNotification(
@@ -330,23 +332,24 @@ const FilmsManagement: React.FC = () => {
       );
 
       // Update local state
-      setFilms(prev =>
-        prev.map(f =>
-          f.id === film.id
-            ? {
-                ...f,
-                status: 'approved',
-                last_action: {
-                  type: 'approve',
-                  admin: currentAdmin,
-                  date: new Date().toISOString()
-                }
+      setFilms(films.map(f => 
+        f.id === film.id 
+          ? { 
+              ...f, 
+              status: 'approved',
+              last_action: {
+                type: 'approve',
+                admin: currentAdmin,
+                date: new Date().toISOString()
               }
-            : f
-        )
-      );
+            } 
+          : f
+      ));
+
+      toast.success(`Film "${film.title}" has been approved`);
     } catch (error) {
       console.error('Error approving film:', error);
+      toast.error('Failed to approve film');
     }
   };
 
@@ -426,6 +429,48 @@ const FilmsManagement: React.FC = () => {
   };
 
   const [is_confirm_modal_open, setIsConfirmModalOpen] = useState(false);
+
+  const renderActionButtons = (film: Film) => {
+    return (
+      <div className="flex space-x-2">
+        {film.status === 'pending' && (
+          <>
+            <button
+              onClick={() => handleApprove(film)}
+              className="text-green-600 hover:text-green-900"
+              title="Approve Film"
+            >
+              <CheckIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => {
+                setSelectedFilm(film);
+                setIsRejectModalOpen(true);
+              }}
+              className="text-red-600 hover:text-red-900"
+              title="Reject Film"
+            >
+              <XCircleIcon className="h-5 w-5" />
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => handleWatch(film)}
+          className="text-blue-600 hover:text-blue-900"
+          title="Watch Film"
+        >
+          <EyeIcon className="h-5 w-5" />
+        </button>
+        <button
+          onClick={() => handleDelete(film.id)}
+          className="text-gray-600 hover:text-gray-900"
+          title="Delete Film"
+        >
+          <TrashIcon className="h-5 w-5" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -619,37 +664,7 @@ const FilmsManagement: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleWatch(film)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    {film.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleApprove(film)}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          <CheckIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedFilm(film);
-                            setIsRejectModalOpen(true);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <XCircleIcon className="h-5 w-5" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => handleDelete(film.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+                    {renderActionButtons(film)}
                   </td>
                 </tr>
               ))}
