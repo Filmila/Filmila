@@ -11,8 +11,8 @@ const Navbar = () => {
   };
 
   const getDashboardLink = () => {
-    if (!user?.role) return '/';
-    const role = user.role.toLowerCase();
+    if (!user?.profile?.role) return '/';
+    const role = user.profile.role.toLowerCase();
     return `/${role}/dashboard`;
   };
 
