@@ -6,9 +6,18 @@ const Layout = () => {
   const { user, logout } = useAuth();
 
   const getDashboardLink = () => {
-    if (!user?.profile?.role) return '/';
-    const role = user.profile.role.toLowerCase();
-    return `/${role}/${role === 'admin' ? 'films' : 'dashboard'}`;
+    // Default to viewer if no profile or role
+    const role = (user?.profile?.role || 'VIEWER').toLowerCase();
+    
+    switch (role) {
+      case 'filmmaker':
+        return '/filmmaker/dashboard';
+      case 'admin':
+        return '/admin/films';
+      case 'viewer':
+      default:
+        return '/viewer/dashboard';
+    }
   };
 
   return (
