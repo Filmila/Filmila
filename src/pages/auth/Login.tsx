@@ -54,7 +54,7 @@ export default function Login() {
   const handleRedirect = (role: string) => {
     switch (role) {
       case 'ADMIN':
-        navigate('/admin/dashboard');
+        navigate('/admin/films');
         break;
       case 'FILMMAKER':
         navigate('/filmmaker/dashboard');
