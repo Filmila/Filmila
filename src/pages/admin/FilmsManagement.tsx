@@ -325,11 +325,16 @@ const FilmsManagement: React.FC = () => {
 
       if (updateError) throw updateError;
 
-      // Send notification to filmmaker
-      await notificationService.sendFilmApprovalNotification(
-        film.title,
-        film.filmmaker
-      );
+      // Try to send notification but don't block on failure
+      try {
+        await notificationService.sendFilmApprovalNotification(
+          film.title,
+          film.filmmaker
+        );
+      } catch (notificationError) {
+        console.warn('Failed to send notification:', notificationError);
+        // Continue with approval process even if notification fails
+      }
 
       // Update local state
       setFilms(films.map(f => 

@@ -69,19 +69,37 @@ export const notificationService = {
 
   async getUserIdByEmail(email: string): Promise<string | null> {
     try {
-      // Decode email if it contains encoded characters
-      const decodedEmail = decodeURIComponent(email).toLowerCase();
+      // Decode email if it contains encoded characters and convert to lowercase
+      const decodedEmail = decodeURIComponent(email).toLowerCase().trim();
       console.log(`Looking up user ID for email: ${decodedEmail}`);
 
+      // First try with exact match
+      const { data: exactProfiles, error: exactError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', decodedEmail)
+        .limit(1);
+
+      if (exactError) {
+        console.error('Error in exact email lookup:', exactError);
+        return null;
+      }
+
+      if (exactProfiles && exactProfiles.length > 0) {
+        console.log('Found profile with exact match:', exactProfiles[0]);
+        return exactProfiles[0].id;
+      }
+
+      // If no exact match, try case-insensitive search
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email')
         .ilike('email', decodedEmail)
         .limit(1);
 
       if (error) {
         console.error('Error fetching user ID:', error);
-        throw error;
+        return null;
       }
 
       if (!profiles || profiles.length === 0) {
@@ -89,10 +107,11 @@ export const notificationService = {
         return null;
       }
 
+      console.log('Found profile with case-insensitive match:', profiles[0]);
       return profiles[0].id;
     } catch (error) {
       console.error('Error in getUserIdByEmail:', error);
-      throw error;
+      return null;
     }
   },
 
@@ -100,7 +119,8 @@ export const notificationService = {
     try {
       const userId = await this.getUserIdByEmail(userEmail);
       if (!userId) {
-        throw new Error(`Could not find user ID for email: ${userEmail}`);
+        console.error(`Could not find user ID for email: ${userEmail}. Notification will not be sent.`);
+        return;
       }
 
       return this.createNotification({
@@ -114,7 +134,7 @@ export const notificationService = {
       });
     } catch (error) {
       console.error('Error sending approval notification:', error);
-      throw error;
+      return;
     }
   },
 
