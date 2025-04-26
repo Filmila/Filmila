@@ -31,6 +31,8 @@ const FilmmakerDashboard = () => {
     if (user?.email) {
       fetchFilms();
 
+      console.log('Setting up real-time subscription for filmmaker:', user.email);
+      
       // Subscribe to changes
       const subscription = supabase
         .channel('films-channel')
@@ -43,29 +45,51 @@ const FilmmakerDashboard = () => {
             filter: `filmmaker=eq.${user.email}`
           },
           (payload) => {
-            console.log('Received real-time update:', payload);
-            switch (payload.eventType) {
-              case 'INSERT':
-                setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
-                break;
-              case 'DELETE':
-                setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old.id));
-                break;
-              case 'UPDATE':
-                setFilms(prevFilms => prevFilms.map(film => 
-                  film.id === payload.new.id ? payload.new as Film : film
-                ));
-                break;
-              default:
-                // Fallback to fetching all films
-                fetchFilms();
+            console.log('Received real-time update:', {
+              eventType: payload.eventType,
+              old: payload.old,
+              new: payload.new,
+              filmmaker: user.email
+            });
+
+            try {
+              switch (payload.eventType) {
+                case 'INSERT':
+                  console.log('Handling INSERT event');
+                  setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
+                  break;
+                case 'DELETE':
+                  console.log('Handling DELETE event');
+                  setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old.id));
+                  break;
+                case 'UPDATE':
+                  console.log('Handling UPDATE event');
+                  setFilms(prevFilms => {
+                    const updated = prevFilms.map(film => 
+                      film.id === payload.new.id ? payload.new as Film : film
+                    );
+                    console.log('Updated films state:', updated);
+                    return updated;
+                  });
+                  break;
+                default:
+                  console.log('Unhandled event type, fetching all films');
+                  fetchFilms();
+              }
+            } catch (error) {
+              console.error('Error handling real-time update:', error);
+              // Fallback to fetching all films on error
+              fetchFilms();
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Subscription status:', status);
+        });
 
       // Cleanup subscription
       return () => {
+        console.log('Cleaning up real-time subscription');
         subscription.unsubscribe();
       };
     }
