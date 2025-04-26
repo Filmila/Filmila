@@ -27,8 +27,47 @@ const FilmmakerDashboard = () => {
       }
     };
 
+    // Initial fetch
     if (user?.email) {
       fetchFilms();
+
+      // Subscribe to changes
+      const subscription = supabase
+        .channel('films-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'films',
+            filter: `filmmaker=eq.${user.email}`
+          },
+          (payload) => {
+            console.log('Received real-time update:', payload);
+            switch (payload.eventType) {
+              case 'INSERT':
+                setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
+                break;
+              case 'DELETE':
+                setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old.id));
+                break;
+              case 'UPDATE':
+                setFilms(prevFilms => prevFilms.map(film => 
+                  film.id === payload.new.id ? payload.new as Film : film
+                ));
+                break;
+              default:
+                // Fallback to fetching all films
+                fetchFilms();
+            }
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [user?.email]);
 
