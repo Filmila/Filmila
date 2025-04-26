@@ -61,7 +61,28 @@ export const notificationService = {
     }
   },
 
-  async sendFilmApprovalNotification(filmTitle: string, userId: string) {
+  async getUserIdByEmail(email: string): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (error) throw error;
+      return data?.id || null;
+    } catch (error) {
+      console.error('Error fetching user ID:', error);
+      return null;
+    }
+  },
+
+  async sendFilmApprovalNotification(filmTitle: string, userEmail: string) {
+    const userId = await this.getUserIdByEmail(userEmail);
+    if (!userId) {
+      throw new Error(`Could not find user ID for email: ${userEmail}`);
+    }
+
     return this.createNotification({
       user_id: userId,
       title: 'Film Approved',
@@ -71,7 +92,12 @@ export const notificationService = {
     });
   },
 
-  async sendFilmRejectionNotification(filmTitle: string, userId: string, rejectionNote: string) {
+  async sendFilmRejectionNotification(filmTitle: string, userEmail: string, rejectionNote: string) {
+    const userId = await this.getUserIdByEmail(userEmail);
+    if (!userId) {
+      throw new Error(`Could not find user ID for email: ${userEmail}`);
+    }
+
     return this.createNotification({
       user_id: userId,
       title: 'Film Rejected',
