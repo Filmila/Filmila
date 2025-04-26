@@ -65,52 +65,22 @@ export const notificationService = {
     try {
       console.log('Fetching user ID for email:', email);
       
-      // First try to get the user from auth.users
-      const { data: userData, error: userError } = await supabase.auth
-        .admin.listUsers();
-
-      if (userError) {
-        console.error('Error fetching users:', userError);
-        throw userError;
-      }
-
-      const user = userData.users.find(u => u.email === email);
-      if (!user) {
-        console.error('No user found in auth.users with email:', email);
-        return null;
-      }
-
-      // Now verify the profile exists
-      const { data: profileData, error: profileError } = await supabase
+      // Get the user profile directly from the profiles table
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('id')
-        .eq('id', user.id)
+        .eq('email', email)
         .single();
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        // If profile doesn't exist, create it
-        if (profileError.code === 'PGRST116') {
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: user.id,
-              email: email,
-              role: 'FILMMAKER' // Default role for existing users
-            }])
-            .select('id')
-            .single();
-
-          if (createError) {
-            console.error('Error creating profile:', createError);
-            throw createError;
-          }
-          return newProfile.id;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.error('No profile found for email:', email);
+          return null;
         }
-        throw profileError;
+        throw error;
       }
 
-      return profileData.id;
+      return profile.id;
     } catch (error) {
       console.error('Error in getUserIdByEmail:', error);
       throw error;
