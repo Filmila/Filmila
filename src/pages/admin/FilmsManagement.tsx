@@ -293,14 +293,17 @@ const FilmsManagement: React.FC = () => {
           filmService.updateFilmStatus(id, 'approved', undefined)
         )
       );
-      setFilms(films.map(film => 
-        selected_films.has(film.id) ? { ...film, status: 'approved' } : film
-      ));
+      await fetchFilms(); // Refresh the films list to get latest versions
       setSelectedFilms(new Set());
       toast.success('Selected films approved successfully');
     } catch (error) {
       console.error('Error approving films:', error);
-      toast.error('Failed to approve films');
+      if (error instanceof Error && error.message.includes('Version conflict')) {
+        await fetchFilms(); // Refresh the films list on version conflict
+        toast.error('Some films were updated by another user. Please try again.');
+      } else {
+        toast.error('Failed to approve films');
+      }
     }
   };
 
@@ -311,14 +314,17 @@ const FilmsManagement: React.FC = () => {
           filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin')
         )
       );
-      setFilms(films.map(film => 
-        selected_films.has(film.id) ? { ...film, status: 'rejected' } : film
-      ));
+      await fetchFilms(); // Refresh the films list to get latest versions
       setSelectedFilms(new Set());
       toast.success('Selected films rejected successfully');
     } catch (error) {
       console.error('Error rejecting films:', error);
-      toast.error('Failed to reject films');
+      if (error instanceof Error && error.message.includes('Version conflict')) {
+        await fetchFilms(); // Refresh the films list on version conflict
+        toast.error('Some films were updated by another user. Please try again.');
+      } else {
+        toast.error('Failed to reject films');
+      }
     }
   };
 
