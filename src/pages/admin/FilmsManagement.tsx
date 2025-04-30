@@ -395,6 +395,18 @@ const FilmsManagement: React.FC = () => {
         return;
       }
 
+      // Check for version mismatch
+      if (film.version !== latestVersion.version) {
+        console.warn('Version mismatch detected:', {
+          filmId: film.id,
+          localVersion: film.version,
+          databaseVersion: latestVersion.version
+        });
+        toast.error('Film version mismatch. Please refresh the page and try again.');
+        await fetchFilms(); // Refresh list to show current state
+        return;
+      }
+
       // Update film status in database with latest version
       const { data, error: updateError } = await supabase
         .from('films')
@@ -415,8 +427,6 @@ const FilmsManagement: React.FC = () => {
         console.error('Error updating film:', updateError);
         if (updateError.code === '23514') {
           toast.error('Invalid status transition');
-        } else if (updateError.code === 'PGRST116') {
-          toast.error('Film version mismatch. Please refresh and try again.');
         } else {
           toast.error('Failed to approve film. Please try again.');
         }
@@ -424,12 +434,12 @@ const FilmsManagement: React.FC = () => {
       }
 
       if (!data || data.length === 0) {
-        console.warn('Version conflict detected:', {
+        console.warn('Update failed:', {
           filmId: film.id,
           attemptedVersion: latestVersion.version,
           currentTime: new Date().toISOString()
         });
-        toast.error('Film approval failed due to a version conflict. Please refresh the page and try again.');
+        toast.error('Film approval failed. Please try again.');
         await fetchFilms(); // Refresh list to show current state
         return;
       }
