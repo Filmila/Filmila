@@ -11,6 +11,7 @@ export interface Film {
   upload_date: string;
   video_url: string;
   thumbnail_url?: string;
+  version: number;
   last_action?: {
     type: 'approve' | 'reject';
     admin: string;

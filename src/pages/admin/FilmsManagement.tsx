@@ -387,7 +387,10 @@ const FilmsManagement: React.FC = () => {
 
       // Check if status is already approved
       if (latestVersion.status === 'approved') {
-        toast.info('This film is already approved');
+        toast('This film is already approved', {
+          icon: 'ℹ️',
+          duration: 4000
+        });
         await fetchFilms(); // Refresh list to show current state
         return;
       }
