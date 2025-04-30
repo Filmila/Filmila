@@ -407,12 +407,20 @@ const FilmsManagement: React.FC = () => {
         return;
       }
 
+      const newVersion = latestVersion.version + 1;
+      console.log('Attempting update with:', {
+        filmId: film.id,
+        currentVersion: latestVersion.version,
+        newVersion: newVersion,
+        status: 'approved'
+      });
+
       // Update film status in database with latest version
       const { data, error: updateError } = await supabase
         .from('films')
         .update({ 
           status: 'approved',
-          version: latestVersion.version + 1,
+          version: newVersion,
           last_action: {
             type: 'approve',
             admin: currentAdmin,
@@ -424,7 +432,12 @@ const FilmsManagement: React.FC = () => {
         .select();
 
       if (updateError) {
-        console.error('Error updating film:', updateError);
+        console.error('Error updating film:', {
+          error: updateError,
+          filmId: film.id,
+          currentVersion: latestVersion.version,
+          newVersion: newVersion
+        });
         if (updateError.code === '23514') {
           toast.error('Invalid status transition');
         } else {
@@ -434,12 +447,26 @@ const FilmsManagement: React.FC = () => {
       }
 
       if (!data || data.length === 0) {
-        console.warn('Update failed:', {
+        console.error('Update failed - no rows affected:', {
           filmId: film.id,
-          attemptedVersion: latestVersion.version,
-          currentTime: new Date().toISOString()
+          currentVersion: latestVersion.version,
+          newVersion: newVersion,
+          query: {
+            id: film.id,
+            version: latestVersion.version
+          }
         });
-        toast.error('Film approval failed. Please try again.');
+        
+        // Fetch the current state to see what changed
+        const { data: currentState } = await supabase
+          .from('films')
+          .select('version, status')
+          .eq('id', film.id)
+          .single();
+          
+        console.log('Current film state:', currentState);
+        
+        toast.error('Film approval failed. Please refresh and try again.');
         await fetchFilms(); // Refresh list to show current state
         return;
       }
