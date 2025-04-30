@@ -3,7 +3,6 @@ import { TrashIcon, EyeIcon, XMarkIcon, CheckIcon, XCircleIcon, MagnifyingGlassI
 import { Film } from '../../types';
 import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
-import { notificationService } from '../../services/notificationService';
 import { toast } from 'react-hot-toast';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
