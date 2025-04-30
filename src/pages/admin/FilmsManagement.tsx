@@ -289,74 +289,38 @@ const FilmsManagement: React.FC = () => {
 
   const handleBulkApprove = async () => {
     try {
-      const updatedFilms = await Promise.all(
-        Array.from(selected_films).map(async (id) => {
-          const currentFilm = films.find(f => f.id === id);
-          if (!currentFilm) {
-            throw new Error(`Film not found: ${id}`);
-          }
-          return await filmService.updateFilmStatus(
-            id,
-            'approved' as const,
-            undefined
-          );
-        })
+      await Promise.all(
+        Array.from(selected_films).map(id => 
+          filmService.updateFilmStatus(id, 'approved', undefined)
+        )
       );
-      
-      // Update films state with the new films
-      setFilms(films.map(film => {
-        const updatedFilm = updatedFilms.find(u => u.id === film.id);
-        return updatedFilm || film;
-      }));
-      
+      setFilms(films.map(film => 
+        selected_films.has(film.id) ? { ...film, status: 'approved' } : film
+      ));
       setSelectedFilms(new Set());
-      toast.success('Films approved successfully');
+      toast.success('Selected films approved successfully');
     } catch (error) {
-      console.error('Error in bulk approve:', error);
+      console.error('Error approving films:', error);
       toast.error('Failed to approve films');
     }
   };
 
-  const handleBulkReject = () => {
-    setConfirmAction('reject');
-    setIsRejectModalOpen(true);
-  };
-
-  const confirmBulkAction = async () => {
-    if (confirm_action === 'approve') {
-      try {
-        const updatedFilms = await Promise.all(
-          Array.from(selected_films).map(async (id) => {
-            const currentFilm = films.find(f => f.id === id);
-            if (!currentFilm) {
-              throw new Error(`Film not found: ${id}`);
-            }
-            return await filmService.updateFilmStatus(
-              id,
-              'approved' as const,
-              undefined
-            );
-          })
-        );
-        
-        // Update films state with the new films
-        setFilms(films.map(film => {
-          const updatedFilm = updatedFilms.find(u => u.id === film.id);
-          return updatedFilm || film;
-        }));
-        
-        setSelectedFilms(new Set());
-        toast.success('Films approved successfully');
-      } catch (err) {
-        console.error('Failed to bulk approve films:', err);
-        toast.error('Failed to approve films');
-      }
-    } else if (confirm_action === 'reject') {
-      setSelectedFilm(films.find(f => f.id === Array.from(selected_films)[0]) || null);
-      setIsRejectModalOpen(true);
+  const handleBulkReject = async () => {
+    try {
+      await Promise.all(
+        Array.from(selected_films).map(id => 
+          filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin')
+        )
+      );
+      setFilms(films.map(film => 
+        selected_films.has(film.id) ? { ...film, status: 'rejected' } : film
+      ));
+      setSelectedFilms(new Set());
+      toast.success('Selected films rejected successfully');
+    } catch (error) {
+      console.error('Error rejecting films:', error);
+      toast.error('Failed to reject films');
     }
-    setIsConfirmModalOpen(false);
-    setConfirmAction(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -373,74 +337,26 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const handleApprove = async (filmId: string) => {
+  const handleApprove = async (id: string) => {
     try {
-      const currentFilm = films.find(f => f.id === filmId);
-      if (!currentFilm) {
-        toast.error('Film not found');
-        return;
-      }
-
-      if (currentFilm.status === 'approved') {
-        toast.error('Film is already approved');
-        return;
-      }
-
-      // Update film status
-      const updatedFilm = await filmService.updateFilmStatus(filmId, 'approved' as const, undefined);
-
-      // Update local state
-      setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
+      await filmService.updateFilmStatus(id, 'approved', undefined);
+      setFilms(films.map(film => 
+        film.id === id ? { ...film, status: 'approved' } : film
+      ));
       toast.success('Film approved successfully');
-
-      // Send notification to filmmaker
-      await notificationService.sendNotification({
-        recipient: currentFilm.filmmaker,
-        type: 'film_approved',
-        title: 'Film Approved',
-        message: `Your film "${currentFilm.title}" has been approved!`,
-        data: { filmId: currentFilm.id },
-        priority: 'high',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        read: false
-      });
     } catch (error) {
       console.error('Error approving film:', error);
       toast.error('Failed to approve film');
     }
   };
 
-  const handleReject = async (filmId: string, note: string) => {
+  const handleReject = async (id: string) => {
     try {
-      const currentFilm = films.find(f => f.id === filmId);
-      if (!currentFilm) {
-        toast.error('Film not found');
-        return;
-      }
-
-      if (currentFilm.status === 'rejected') {
-        toast.error('Film is already rejected');
-        return;
-      }
-
-      // Update film status
-      const updatedFilm = await filmService.updateFilmStatus(filmId, 'rejected' as const, note);
-
-      // Update local state
-      setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
+      await filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin');
+      setFilms(films.map(film => 
+        film.id === id ? { ...film, status: 'rejected' } : film
+      ));
       toast.success('Film rejected successfully');
-
-      // Send notification to filmmaker
-      await notificationService.sendNotification({
-        recipient: currentFilm.filmmaker,
-        type: 'film_rejected',
-        title: 'Film Rejected',
-        message: `Your film "${currentFilm.title}" has been rejected. Reason: ${note}`,
-        data: { filmId: currentFilm.id },
-        priority: 'high',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-        read: false
-      });
     } catch (error) {
       console.error('Error rejecting film:', error);
       toast.error('Failed to reject film');
@@ -516,27 +432,35 @@ const FilmsManagement: React.FC = () => {
     );
   };
 
+  const handleBulkAction = (action: 'approve' | 'reject') => {
+    if (action === 'approve') {
+      handleBulkApprove();
+    } else {
+      handleBulkReject();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Film Management</h1>
         <div className="space-x-2">
-          {selected_films.size > 0 && (
-            <>
-              <button
-                onClick={handleBulkApprove}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                Bulk Approve ({selected_films.size})
-              </button>
-              <button
-                onClick={handleBulkReject}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Bulk Reject ({selected_films.size})
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => handleBulkAction('approve')}
+            disabled={selected_films.size === 0}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckIcon className="h-5 w-5 mr-2" />
+            Approve Selected ({selected_films.size})
+          </button>
+          <button
+            onClick={() => handleBulkAction('reject')}
+            disabled={selected_films.size === 0}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <XMarkIcon className="h-5 w-5 mr-2" />
+            Reject Selected ({selected_films.size})
+          </button>
           <button
             onClick={exportToCSV}
             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center"
@@ -740,7 +664,11 @@ const FilmsManagement: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={confirmBulkAction}
+                onClick={() => {
+                  handleBulkAction(confirm_action);
+                  setIsConfirmModalOpen(false);
+                  setConfirmAction(null);
+                }}
                 className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
                   confirm_action === 'approve' 
                     ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' 
@@ -845,12 +773,12 @@ const FilmsManagement: React.FC = () => {
               <button
                 onClick={() => {
                   if (selected_film) {
-                    handleReject(selected_film.id, rejection_note);
+                    handleReject(selected_film.id);
                   } else if (selected_films.size > 0) {
                     // Handle bulk rejection
                     films
                       .filter(film => selected_films.has(film.id))
-                      .forEach(film => handleReject(film.id, rejection_note));
+                      .forEach(film => handleReject(film.id));
                   }
                 }}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
