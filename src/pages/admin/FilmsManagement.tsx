@@ -5,6 +5,7 @@ import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
 import { notificationService } from '../../services/notificationService';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
 type SortOrder = 'asc' | 'desc';
@@ -34,7 +35,7 @@ const FilmsManagement: React.FC = () => {
   const [is_reject_modal_open, setIsRejectModalOpen] = useState(false);
   const [selected_film, setSelectedFilm] = useState<Film | null>(null);
   const [rejection_note, setRejectionNote] = useState('');
-  const currentAdmin = 'Admin User'; // This should come from your auth context
+  const { user } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -290,15 +291,23 @@ const FilmsManagement: React.FC = () => {
 
   const handleBulkApprove = async () => {
     try {
-      const filmsToApprove = films.filter(film => selected_films.has(film.id));
+      const updatedFilms = await Promise.all(
+        Array.from(selected_films).map(async (id) => {
+          return await filmService.updateFilmStatus(id, 'approved' as const, undefined);
+        })
+      );
       
-      for (const film of filmsToApprove) {
-        await handleApprove(film);
-      }
-
+      // Update films state with the new films
+      setFilms(films.map(film => {
+        const updatedFilm = updatedFilms.find(u => u.id === film.id);
+        return updatedFilm || film;
+      }));
+      
       setSelectedFilms(new Set());
+      toast.success('Films approved successfully');
     } catch (error) {
       console.error('Error in bulk approve:', error);
+      toast.error('Failed to approve films');
     }
   };
 
@@ -310,13 +319,23 @@ const FilmsManagement: React.FC = () => {
   const confirmBulkAction = async () => {
     if (confirm_action === 'approve') {
       try {
-        const updatedFilms: Film[] = await Promise.all(Array.from(selected_films).map(async id => {
-          const updatedFilm = await filmService.updateFilmStatus(id, 'approved', undefined);
-          return updatedFilm;
+        const updatedFilms = await Promise.all(
+          Array.from(selected_films).map(async (id) => {
+            return await filmService.updateFilmStatus(id, 'approved' as const, undefined);
+          })
+        );
+        
+        // Update films state with the new films
+        setFilms(films.map(film => {
+          const updatedFilm = updatedFilms.find(u => u.id === film.id);
+          return updatedFilm || film;
         }));
-        setFilms(updatedFilms);
+        
+        setSelectedFilms(new Set());
+        toast.success('Films approved successfully');
       } catch (err) {
         console.error('Failed to bulk approve films:', err);
+        toast.error('Failed to approve films');
       }
     } else if (confirm_action === 'reject') {
       setSelectedFilm(films.find(f => f.id === Array.from(selected_films)[0]) || null);
@@ -366,213 +385,77 @@ const FilmsManagement: React.FC = () => {
     }
   };
 
-  const handleApprove = async (film: Film) => {
+  const handleApprove = async (filmId: string) => {
     try {
-      // First, verify admin role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (profileError || !profile || profile.role !== 'ADMIN') {
-        console.error('Admin role verification failed:', { profileError, profile });
-        toast.error('You do not have permission to approve films');
+      const currentFilm = films.find(f => f.id === filmId);
+      if (!currentFilm) {
+        toast.error('Film not found');
         return;
       }
 
-      console.log('Starting approval process for film:', {
-        filmId: film.id,
-        currentStatus: film.status,
-        currentVersion: film.version,
-        adminRole: profile.role
-      });
-
-      // Get latest version
-      const latestVersion = await getLatestFilmVersion(film.id);
-      if (!latestVersion) {
-        toast.error('Could not fetch film version');
+      if (currentFilm.status === 'approved') {
+        toast.error('Film is already approved');
         return;
       }
 
-      console.log('Current film state:', {
-        filmId: film.id,
-        latestVersion: latestVersion.version,
-        latestStatus: latestVersion.status
+      // Update film status
+      const updatedFilm = await filmService.updateFilmStatus(filmId, 'approved', undefined);
+
+      // Update local state
+      setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
+      toast.success('Film approved successfully');
+
+      // Send notification to filmmaker
+      await notificationService.sendNotification({
+        recipient: currentFilm.filmmaker,
+        type: 'film_approved',
+        title: 'Film Approved',
+        message: `Your film "${currentFilm.title}" has been approved!`,
+        data: { filmId: currentFilm.id },
+        priority: 'high',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        read: false
       });
-
-      const newVersion = latestVersion.version + 1;
-      const maxRetries = 3;
-      let retryCount = 0;
-      let success = false;
-
-      while (retryCount < maxRetries && !success) {
-        console.log(`Attempt ${retryCount + 1} to approve film:`, {
-          filmId: film.id,
-          currentVersion: latestVersion.version,
-          newVersion: newVersion
-        });
-
-        // Update film status in database with latest version
-        const { data, error: updateError } = await supabase
-          .from('films')
-          .update({ 
-            status: 'approved',
-            version: newVersion,
-            last_action: {
-              type: 'approve',
-              admin: currentAdmin,
-              date: new Date().toISOString()
-            }
-          })
-          .eq('id', film.id)
-          .eq('version', latestVersion.version)
-          .select();
-
-        if (updateError) {
-          console.error('Error updating film:', {
-            error: updateError,
-            filmId: film.id,
-            currentVersion: latestVersion.version,
-            newVersion: newVersion,
-            errorCode: updateError.code,
-            errorMessage: updateError.message,
-            errorDetails: updateError.details
-          });
-          
-          if (updateError.code === '42501') {
-            toast.error('Permission denied. Please check your admin role.');
-            return;
-          }
-          
-          if (updateError.code === '23514') {
-            toast.error('Invalid status transition');
-            return;
-          }
-          
-          toast.error('Failed to approve film. Please try again.');
-          return;
-        }
-
-        console.log('Update response:', {
-          filmId: film.id,
-          data: data,
-          rowsAffected: data?.length || 0
-        });
-
-        if (data && data.length > 0) {
-          const updatedFilm = data[0];
-
-          console.log('Film approved successfully:', {
-            filmId: film.id,
-            oldVersion: latestVersion.version,
-            newVersion: updatedFilm.version,
-            newStatus: updatedFilm.status,
-            data: data
-          });
-
-          // Send notification to filmmaker
-          await notificationService.sendFilmApprovalNotification(
-            film.title,
-            film.filmmaker
-          );
-
-          // Update local state
-          setFilms((prevFilms: FilmWithActions[]) =>
-            prevFilms.map((f: FilmWithActions) =>
-              f.id === film.id
-                ? {
-                    ...f,
-                    status: 'approved',
-                    version: updatedFilm.version,
-                    last_action: {
-                      type: 'approve',
-                      admin: currentAdmin,
-                      date: new Date().toISOString()
-                    }
-                  }
-                : f
-            )
-          );
-
-          toast.success('Film approved successfully');
-          success = true;
-        } else {
-          console.log('No data returned from update, refreshing films list');
-          // If no data returned but no error, we'll still consider it a success
-          // but we'll need to refresh the films list to get the latest state
-          await fetchFilms();
-          toast.success('Film approved successfully');
-          success = true;
-        }
-
-        if (!success) {
-          retryCount++;
-          if (retryCount < maxRetries) {
-            console.log(`Retrying approval (attempt ${retryCount + 1}/${maxRetries})`);
-            // Wait a short time before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      }
-
-      if (!success) {
-        console.error('Failed to approve film after all retries');
-        toast.error('Failed to approve film after multiple attempts. Please try again.');
-      }
     } catch (error) {
-      console.error('Error in handleApprove:', error);
-      toast.error('An unexpected error occurred');
+      console.error('Error approving film:', error);
+      toast.error('Failed to approve film');
     }
   };
 
-  const handleReject = async (film: Film, note: string) => {
+  const handleReject = async (filmId: string, note: string) => {
     try {
-      const { error } = await supabase
-        .from('films')
-        .update({
-          status: 'rejected',
-          last_action: {
-            type: 'reject',
-            admin: currentAdmin,
-            date: new Date().toISOString(),
-            note
-          }
-        })
-        .eq('id', film.id);
+      const currentFilm = films.find(f => f.id === filmId);
+      if (!currentFilm) {
+        toast.error('Film not found');
+        return;
+      }
 
-      if (error) throw error;
+      if (currentFilm.status === 'rejected') {
+        toast.error('Film is already rejected');
+        return;
+      }
 
-      // Send notification to filmmaker
-      await notificationService.sendFilmRejectionNotification(
-        film.title,
-        film.filmmaker,
-        note
-      );
+      // Update film status
+      const updatedFilm = await filmService.updateFilmStatus(filmId, 'rejected', note);
 
       // Update local state
-      setFilms(prev =>
-        prev.map(f =>
-          f.id === film.id
-            ? {
-                ...f,
-                status: 'rejected',
-                last_action: {
-                  type: 'reject',
-                  admin: currentAdmin,
-                  date: new Date().toISOString(),
-                  note
-                }
-              }
-            : f
-        )
-      );
+      setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
+      toast.success('Film rejected successfully');
 
-      setIsRejectModalOpen(false);
-      setRejectionNote('');
-      setSelectedFilm(null);
+      // Send notification to filmmaker
+      await notificationService.sendNotification({
+        recipient: currentFilm.filmmaker,
+        type: 'film_rejected',
+        title: 'Film Rejected',
+        message: `Your film "${currentFilm.title}" has been rejected. Reason: ${note}`,
+        data: { filmId: currentFilm.id },
+        priority: 'high',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        read: false
+      });
     } catch (error) {
       console.error('Error rejecting film:', error);
+      toast.error('Failed to reject film');
     }
   };
 
@@ -609,7 +492,7 @@ const FilmsManagement: React.FC = () => {
         {film.status === 'pending' && (
           <>
             <button
-              onClick={() => handleApprove(film)}
+              onClick={() => handleApprove(film.id)}
               className="text-green-600 hover:text-green-900"
               title="Approve Film"
             >
@@ -974,12 +857,12 @@ const FilmsManagement: React.FC = () => {
               <button
                 onClick={() => {
                   if (selected_film) {
-                    handleReject(selected_film, rejection_note);
+                    handleReject(selected_film.id, rejection_note);
                   } else if (selected_films.size > 0) {
                     // Handle bulk rejection
                     films
                       .filter(film => selected_films.has(film.id))
-                      .forEach(film => handleReject(film, rejection_note));
+                      .forEach(film => handleReject(film.id, rejection_note));
                   }
                 }}
                 className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
