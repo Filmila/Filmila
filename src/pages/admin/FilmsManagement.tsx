@@ -5,7 +5,6 @@ import { filmService } from '../../services/filmService';
 import { supabase } from '../../config/supabase';
 import { notificationService } from '../../services/notificationService';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
 
 type SortField = 'title' | 'filmmaker' | 'upload_date' | 'status' | 'last_action';
 type SortOrder = 'asc' | 'desc';
@@ -35,7 +34,6 @@ const FilmsManagement: React.FC = () => {
   const [is_reject_modal_open, setIsRejectModalOpen] = useState(false);
   const [selected_film, setSelectedFilm] = useState<Film | null>(null);
   const [rejection_note, setRejectionNote] = useState('');
-  const { user } = useAuth();
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -359,32 +357,6 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const getLatestFilmVersion = async (filmId: string): Promise<{ version: number, status: string } | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('films')
-        .select('version, status')
-        .eq('id', filmId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching latest film version:', error);
-        return null;
-      }
-
-      console.log('Latest film version fetched:', {
-        filmId,
-        version: data.version,
-        status: data.status
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Error in getLatestFilmVersion:', error);
-      return null;
-    }
-  };
-
   const handleApprove = async (filmId: string) => {
     try {
       const currentFilm = films.find(f => f.id === filmId);
@@ -399,7 +371,7 @@ const FilmsManagement: React.FC = () => {
       }
 
       // Update film status
-      const updatedFilm = await filmService.updateFilmStatus(filmId, 'approved', undefined);
+      const updatedFilm = await filmService.updateFilmStatus(filmId, 'approved' as const, undefined);
 
       // Update local state
       setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
@@ -436,7 +408,7 @@ const FilmsManagement: React.FC = () => {
       }
 
       // Update film status
-      const updatedFilm = await filmService.updateFilmStatus(filmId, 'rejected', note);
+      const updatedFilm = await filmService.updateFilmStatus(filmId, 'rejected' as const, note);
 
       // Update local state
       setFilms(films.map(f => f.id === filmId ? updatedFilm : f));
