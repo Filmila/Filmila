@@ -332,7 +332,7 @@ const FilmsManagement: React.FC = () => {
       console.log('Current film version:', currentFilm.version);
 
       // Update film status in database with optimistic locking
-      const { data: updatedFilm, error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('films')
         .update({ 
           status: 'approved',
@@ -345,13 +345,14 @@ const FilmsManagement: React.FC = () => {
         })
         .eq('id', film.id)
         .eq('version', currentFilm.version) // Match exact version
-        .select()
-        .single();
+        .select();  // Remove .single() here
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         if (updateError.code === '23514') { // Check constraint violation
           toast.error('Invalid status transition');
+        } else if (updateError.code === 'PGRST116') {
+          toast.error('Film version mismatch. Please refresh and try again.');
         } else {
           toast.error('Failed to approve film. Please try again.');
         }
@@ -359,17 +360,20 @@ const FilmsManagement: React.FC = () => {
       }
 
       // Check if no rows were updated (version mismatch)
-      if (!updatedFilm) {
+      if (!data || data.length === 0) {
         console.warn('Version conflict detected for film:', film.id);
         toast.error('Film approval failed due to a version conflict. Please refresh the page and try again.');
         return;
       }
 
+      const updatedFilm = data[0]; // Get the first (and should be only) result
+
       // Log successful update
       console.log('Film approved successfully:', {
         filmId: film.id,
         oldVersion: currentFilm.version,
-        newVersion: updatedFilm.version
+        newVersion: updatedFilm.version,
+        data: data
       });
 
       // Update local state with the new version
