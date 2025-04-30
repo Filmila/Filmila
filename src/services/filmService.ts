@@ -48,37 +48,23 @@ export const filmService = {
   },
 
   async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
-    // First get the current film
-    const { data: currentFilm, error: fetchError } = await supabase
-      .from('films')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // Update the film with the new status and increment version
+    // Update the film with the new status
     const { data, error } = await supabase
       .from('films')
       .update({ 
         status, 
         rejection_note,
-        version: (currentFilm.version || 0) + 1,
         last_action: {
           type: status === 'approved' ? 'approve' : 'reject',
           date: new Date().toISOString()
         }
       })
       .eq('id', id)
-      .eq('version', currentFilm.version || 0)
       .select()
       .single();
 
     if (error) {
       console.error('Error updating film status:', error);
-      if (error.code === 'PGRST116') {
-        throw new Error('Version conflict detected. Please refresh and try again.');
-      }
       throw error;
     }
 
