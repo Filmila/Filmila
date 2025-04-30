@@ -368,145 +368,112 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
-      console.log('Starting approval process for film:', film.id);
-
-      // Get the latest version right before approval
+      // Get latest version
       const latestVersion = await getLatestFilmVersion(film.id);
-      
       if (!latestVersion) {
-        toast.error('Failed to fetch current film version');
-        return;
-      }
-
-      console.log('Version comparison:', {
-        filmId: film.id,
-        localVersion: film.version,
-        databaseVersion: latestVersion.version,
-        currentStatus: latestVersion.status
-      });
-
-      // Check if status is already approved
-      if (latestVersion.status === 'approved') {
-        toast('This film is already approved', {
-          icon: 'ℹ️',
-          duration: 4000
-        });
-        await fetchFilms(); // Refresh list to show current state
-        return;
-      }
-
-      // Check for version mismatch
-      if (film.version !== latestVersion.version) {
-        console.warn('Version mismatch detected:', {
-          filmId: film.id,
-          localVersion: film.version,
-          databaseVersion: latestVersion.version
-        });
-        toast.error('Film version mismatch. Please refresh the page and try again.');
-        await fetchFilms(); // Refresh list to show current state
+        toast.error('Could not fetch film version');
         return;
       }
 
       const newVersion = latestVersion.version + 1;
-      console.log('Attempting update with:', {
-        filmId: film.id,
-        currentVersion: latestVersion.version,
-        newVersion: newVersion,
-        status: 'approved'
-      });
+      const maxRetries = 3;
+      let retryCount = 0;
+      let success = false;
 
-      // Update film status in database with latest version
-      const { data, error: updateError } = await supabase
-        .from('films')
-        .update({ 
-          status: 'approved',
-          version: newVersion,
-          last_action: {
-            type: 'approve',
-            admin: currentAdmin,
-            date: new Date().toISOString()
-          }
-        })
-        .eq('id', film.id)
-        .eq('version', latestVersion.version)
-        .select();
-
-      if (updateError) {
-        console.error('Error updating film:', {
-          error: updateError,
-          filmId: film.id,
-          currentVersion: latestVersion.version,
-          newVersion: newVersion
-        });
-        if (updateError.code === '23514') {
-          toast.error('Invalid status transition');
-        } else {
-          toast.error('Failed to approve film. Please try again.');
-        }
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        console.error('Update failed - no rows affected:', {
-          filmId: film.id,
-          currentVersion: latestVersion.version,
-          newVersion: newVersion,
-          query: {
-            id: film.id,
-            version: latestVersion.version
-          }
-        });
-        
-        // Fetch the current state to see what changed
-        const { data: currentState } = await supabase
+      while (retryCount < maxRetries && !success) {
+        // Update film status in database with latest version
+        const { data, error: updateError } = await supabase
           .from('films')
-          .select('version, status')
+          .update({ 
+            status: 'approved',
+            version: newVersion,
+            last_action: {
+              type: 'approve',
+              admin: currentAdmin,
+              date: new Date().toISOString()
+            }
+          })
           .eq('id', film.id)
-          .single();
-          
-        console.log('Current film state:', currentState);
-        
-        toast.error('Film approval failed. Please refresh and try again.');
-        await fetchFilms(); // Refresh list to show current state
-        return;
-      }
+          .eq('version', latestVersion.version)
+          .select();
 
-      const updatedFilm = data[0];
+        if (updateError) {
+          console.error('Error updating film:', {
+            error: updateError,
+            filmId: film.id,
+            currentVersion: latestVersion.version,
+            newVersion: newVersion
+          });
+          if (updateError.code === '23514') {
+            toast.error('Invalid status transition');
+            return;
+          }
+          toast.error('Failed to approve film. Please try again.');
+          return;
+        }
 
-      console.log('Film approved successfully:', {
-        filmId: film.id,
-        oldVersion: latestVersion.version,
-        newVersion: updatedFilm.version,
-        data: data
-      });
+        if (!data || data.length === 0) {
+          // Version conflict - fetch latest version and retry
+          const currentState = await getLatestFilmVersion(film.id);
+          if (!currentState) {
+            toast.error('Could not fetch current film state');
+            return;
+          }
 
-      // Update local state
-      setFilms(films.map(f => 
-        f.id === film.id ? updatedFilm : f
-      ));
+          if (currentState.version !== latestVersion.version) {
+            console.log('Version conflict detected, retrying...', {
+              expectedVersion: latestVersion.version,
+              currentVersion: currentState.version
+            });
+            latestVersion.version = currentState.version;
+            retryCount++;
+            continue;
+          }
+        }
 
-      // Show success message
-      toast.success(`Film "${film.title}" has been approved`);
+        success = true;
+        const updatedFilm = data[0];
 
-      // Try to send notification
-      try {
+        console.log('Film approved successfully:', {
+          filmId: film.id,
+          oldVersion: latestVersion.version,
+          newVersion: updatedFilm.version,
+          data: data
+        });
+
+        // Send notification to filmmaker
         await notificationService.sendFilmApprovalNotification(
           film.title,
           film.filmmaker
         );
-      } catch (notificationError) {
-        console.warn('Failed to send notification:', notificationError);
-        toast('Film approved, but notification could not be sent to filmmaker', {
-          icon: '⚠️',
-          duration: 4000
-        });
+
+        // Update local state
+        setFilms(prev =>
+          prev.map(f =>
+            f.id === film.id
+              ? {
+                  ...f,
+                  status: 'approved',
+                  version: updatedFilm.version,
+                  last_action: {
+                    type: 'approve',
+                    admin: currentAdmin,
+                    date: new Date().toISOString()
+                  }
+                }
+              : f
+          )
+        );
+
+        toast.success('Film approved successfully');
       }
 
-      // Refresh the films list to ensure consistency
-      await fetchFilms();
+      if (!success) {
+        toast.error('Failed to approve film after multiple attempts. Please try again.');
+      }
     } catch (error) {
-      console.error('Unexpected error during film approval:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      console.error('Error in handleApprove:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
