@@ -291,7 +291,15 @@ const FilmsManagement: React.FC = () => {
     try {
       const updatedFilms = await Promise.all(
         Array.from(selected_films).map(async (id) => {
-          return await filmService.updateFilmStatus(id, 'approved' as const, undefined);
+          const currentFilm = films.find(f => f.id === id);
+          if (!currentFilm) {
+            throw new Error(`Film not found: ${id}`);
+          }
+          return await filmService.updateFilmStatus(
+            id,
+            'approved' as const,
+            undefined
+          );
         })
       );
       
@@ -319,7 +327,15 @@ const FilmsManagement: React.FC = () => {
       try {
         const updatedFilms = await Promise.all(
           Array.from(selected_films).map(async (id) => {
-            return await filmService.updateFilmStatus(id, 'approved' as const, undefined);
+            const currentFilm = films.find(f => f.id === id);
+            if (!currentFilm) {
+              throw new Error(`Film not found: ${id}`);
+            }
+            return await filmService.updateFilmStatus(
+              id,
+              'approved' as const,
+              undefined
+            );
           })
         );
         
