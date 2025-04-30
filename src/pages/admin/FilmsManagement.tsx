@@ -310,27 +310,33 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
-      // Start a transaction for atomic updates
+      // First fetch the latest version of the film
       const { data: currentFilm, error: fetchError } = await supabase
         .from('films')
-        .select('status, version')
+        .select('id, status, version')
         .eq('id', film.id)
         .single();
 
-      if (fetchError) throw fetchError;
-
-      // Verify film hasn't been modified by someone else
-      if (currentFilm.status !== film.status) {
-        toast.error('Film status has been modified by another user. Please refresh.');
+      if (fetchError) {
+        console.error('Error fetching current film version:', fetchError);
+        toast.error('Failed to fetch current film status. Please try again.');
         return;
       }
+
+      if (!currentFilm) {
+        console.error('Film not found:', film.id);
+        toast.error('Film not found. Please refresh the page.');
+        return;
+      }
+
+      console.log('Current film version:', currentFilm.version);
 
       // Update film status in database with optimistic locking
       const { data: updatedFilm, error: updateError } = await supabase
         .from('films')
         .update({ 
           status: 'approved',
-          version: (currentFilm.version || 0) + 1,
+          version: (currentFilm.version || 0) + 1, // Increment version
           last_action: {
             type: 'approve',
             admin: currentAdmin,
@@ -338,29 +344,40 @@ const FilmsManagement: React.FC = () => {
           }
         })
         .eq('id', film.id)
-        .eq('version', currentFilm.version || 0)
+        .eq('version', currentFilm.version) // Match exact version
         .select()
         .single();
 
       if (updateError) {
-        if (updateError.code === '23514') {  // Check constraint violation
+        console.error('Error updating film:', updateError);
+        if (updateError.code === '23514') { // Check constraint violation
           toast.error('Invalid status transition');
-          return;
+        } else {
+          toast.error('Failed to approve film. Please try again.');
         }
-        throw updateError;
-      }
-
-      if (!updatedFilm) {
-        toast.error('Film was modified by another user. Please refresh.');
         return;
       }
 
-      // Update local state only after successful database update
+      // Check if no rows were updated (version mismatch)
+      if (!updatedFilm) {
+        console.warn('Version conflict detected for film:', film.id);
+        toast.error('Film approval failed due to a version conflict. Please refresh the page and try again.');
+        return;
+      }
+
+      // Log successful update
+      console.log('Film approved successfully:', {
+        filmId: film.id,
+        oldVersion: currentFilm.version,
+        newVersion: updatedFilm.version
+      });
+
+      // Update local state with the new version
       setFilms(films.map(f => 
         f.id === film.id ? updatedFilm : f
       ));
 
-      // Show success message for film approval
+      // Show success message
       toast.success(`Film "${film.title}" has been approved`);
 
       // Try to send notification but don't block on failure
@@ -380,8 +397,8 @@ const FilmsManagement: React.FC = () => {
       // Refresh the films list to ensure consistency
       fetchFilms();
     } catch (error) {
-      console.error('Error approving film:', error);
-      toast.error('Failed to approve film. Please try again.');
+      console.error('Unexpected error during film approval:', error);
+      toast.error('An unexpected error occurred. Please try again.');
     }
   };
 
