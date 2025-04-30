@@ -48,29 +48,19 @@ export const filmService = {
   },
 
   async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
-    // First, get the current film to check its version
-    const { data: currentFilm, error: fetchError } = await supabase
-      .from('films')
-      .select('version')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
-
     // Update the film with the new status and increment version
     const { data, error } = await supabase
       .from('films')
       .update({ 
         status, 
         rejection_note,
-        version: currentFilm.version + 1,
+        version: supabase.rpc('increment_version'),
         last_action: {
           type: status === 'approved' ? 'approve' : 'reject',
           date: new Date().toISOString()
         }
       })
       .eq('id', id)
-      .eq('version', currentFilm.version) // Ensure we're updating the correct version
       .select()
       .single();
 
