@@ -81,6 +81,7 @@ const UploadFilm = () => {
         status: 'pending',
         upload_date: new Date().toISOString(),
         video_url: videoUrl,
+        version: 1 // Initialize version as 1 for new films
       };
 
       // Store film in database
