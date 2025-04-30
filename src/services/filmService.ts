@@ -48,27 +48,47 @@ export const filmService = {
   },
 
   async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
-    // Update the film with the new status
-    const { data, error } = await supabase
-      .from('films')
-      .update({ 
-        status, 
-        rejection_note,
-        last_action: {
-          type: status === 'approved' ? 'approve' : 'reject',
-          date: new Date().toISOString()
-        }
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    try {
+      // First verify the film exists
+      const { data: existingFilm, error: checkError } = await supabase
+        .from('films')
+        .select('id')
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      console.error('Error updating film status:', error);
+      if (checkError || !existingFilm) {
+        throw new Error('Film not found');
+      }
+
+      // Update the film with the new status
+      const { data, error } = await supabase
+        .from('films')
+        .update({ 
+          status, 
+          rejection_note,
+          last_action: {
+            type: status === 'approved' ? 'approve' : 'reject',
+            date: new Date().toISOString()
+          }
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating film status:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Failed to update film status');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in updateFilmStatus:', error);
       throw error;
     }
-
-    return data;
   },
 
   async deleteFilm(id: string): Promise<void> {

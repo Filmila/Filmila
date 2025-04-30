@@ -345,13 +345,12 @@ const FilmsManagement: React.FC = () => {
   const handleApprove = async (id: string) => {
     try {
       await filmService.updateFilmStatus(id, 'approved', undefined);
-      await fetchFilms(); // Refresh the films list to get latest versions
+      await fetchFilms(); // Refresh the films list
       toast.success('Film approved successfully');
     } catch (error) {
       console.error('Error approving film:', error);
-      if (error instanceof Error && error.message.includes('Version conflict')) {
-        await fetchFilms(); // Refresh the films list on version conflict
-        toast.error('Film was updated by another user. Please try again.');
+      if (error instanceof Error) {
+        toast.error(error.message);
       } else {
         toast.error('Failed to approve film');
       }
@@ -361,13 +360,12 @@ const FilmsManagement: React.FC = () => {
   const handleReject = async (id: string) => {
     try {
       await filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin');
-      await fetchFilms(); // Refresh the films list to get latest versions
+      await fetchFilms(); // Refresh the films list
       toast.success('Film rejected successfully');
     } catch (error) {
       console.error('Error rejecting film:', error);
-      if (error instanceof Error && error.message.includes('Version conflict')) {
-        await fetchFilms(); // Refresh the films list on version conflict
-        toast.error('Film was updated by another user. Please try again.');
+      if (error instanceof Error) {
+        toast.error(error.message);
       } else {
         toast.error('Failed to reject film');
       }
