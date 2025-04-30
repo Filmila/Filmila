@@ -65,12 +65,39 @@ const FilmsManagement: React.FC = () => {
     }));
   }, [selectedStatus, startDate, endDate, sortField, sortOrder]);
 
+  // Add real-time subscription
   useEffect(() => {
+    // Initial fetch
     fetchFilms();
-  }, [selectedStatus, startDate, endDate, sortField, sortOrder]);
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('films-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'films'
+        },
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          fetchFilms(); // Refresh the entire list when any change occurs
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchFilms = async () => {
     try {
+      console.log('Fetching films...');
       let query = supabase
         .from('films')
         .select('*');
@@ -91,11 +118,16 @@ const FilmsManagement: React.FC = () => {
 
       const { data, error: fetchError } = await query;
 
-      if (fetchError) throw fetchError;
-      setFilms(data || []);
+      if (fetchError) {
+        console.error('Error fetching films:', fetchError);
+        throw fetchError;
+      }
 
+      console.log('Films fetched successfully:', data?.length || 0, 'films');
+      setFilms(data || []);
     } catch (error) {
-      console.error('Error fetching films:', error);
+      console.error('Error in fetchFilms:', error);
+      toast.error('Failed to fetch films');
     }
   };
 
@@ -308,35 +340,64 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const handleApprove = async (film: Film) => {
+  const getLatestFilmVersion = async (filmId: string): Promise<{ version: number, status: string } | null> => {
     try {
-      // First fetch the latest version of the film
-      const { data: currentFilm, error: fetchError } = await supabase
+      const { data, error } = await supabase
         .from('films')
-        .select('id, status, version')
-        .eq('id', film.id)
+        .select('version, status')
+        .eq('id', filmId)
         .single();
 
-      if (fetchError) {
-        console.error('Error fetching current film version:', fetchError);
-        toast.error('Failed to fetch current film status. Please try again.');
+      if (error) {
+        console.error('Error fetching latest film version:', error);
+        return null;
+      }
+
+      console.log('Latest film version fetched:', {
+        filmId,
+        version: data.version,
+        status: data.status
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error in getLatestFilmVersion:', error);
+      return null;
+    }
+  };
+
+  const handleApprove = async (film: Film) => {
+    try {
+      console.log('Starting approval process for film:', film.id);
+
+      // Get the latest version right before approval
+      const latestVersion = await getLatestFilmVersion(film.id);
+      
+      if (!latestVersion) {
+        toast.error('Failed to fetch current film version');
         return;
       }
 
-      if (!currentFilm) {
-        console.error('Film not found:', film.id);
-        toast.error('Film not found. Please refresh the page.');
+      console.log('Version comparison:', {
+        filmId: film.id,
+        localVersion: film.version,
+        databaseVersion: latestVersion.version,
+        currentStatus: latestVersion.status
+      });
+
+      // Check if status is already approved
+      if (latestVersion.status === 'approved') {
+        toast.info('This film is already approved');
+        await fetchFilms(); // Refresh list to show current state
         return;
       }
 
-      console.log('Current film version:', currentFilm.version);
-
-      // Update film status in database with optimistic locking
+      // Update film status in database with latest version
       const { data, error: updateError } = await supabase
         .from('films')
         .update({ 
           status: 'approved',
-          version: (currentFilm.version || 0) + 1, // Increment version
+          version: latestVersion.version + 1,
           last_action: {
             type: 'approve',
             admin: currentAdmin,
@@ -344,12 +405,12 @@ const FilmsManagement: React.FC = () => {
           }
         })
         .eq('id', film.id)
-        .eq('version', currentFilm.version) // Match exact version
-        .select();  // Remove .single() here
+        .eq('version', latestVersion.version)
+        .select();
 
       if (updateError) {
         console.error('Error updating film:', updateError);
-        if (updateError.code === '23514') { // Check constraint violation
+        if (updateError.code === '23514') {
           toast.error('Invalid status transition');
         } else if (updateError.code === 'PGRST116') {
           toast.error('Film version mismatch. Please refresh and try again.');
@@ -359,24 +420,27 @@ const FilmsManagement: React.FC = () => {
         return;
       }
 
-      // Check if no rows were updated (version mismatch)
       if (!data || data.length === 0) {
-        console.warn('Version conflict detected for film:', film.id);
+        console.warn('Version conflict detected:', {
+          filmId: film.id,
+          attemptedVersion: latestVersion.version,
+          currentTime: new Date().toISOString()
+        });
         toast.error('Film approval failed due to a version conflict. Please refresh the page and try again.');
+        await fetchFilms(); // Refresh list to show current state
         return;
       }
 
-      const updatedFilm = data[0]; // Get the first (and should be only) result
+      const updatedFilm = data[0];
 
-      // Log successful update
       console.log('Film approved successfully:', {
         filmId: film.id,
-        oldVersion: currentFilm.version,
+        oldVersion: latestVersion.version,
         newVersion: updatedFilm.version,
         data: data
       });
 
-      // Update local state with the new version
+      // Update local state
       setFilms(films.map(f => 
         f.id === film.id ? updatedFilm : f
       ));
@@ -384,7 +448,7 @@ const FilmsManagement: React.FC = () => {
       // Show success message
       toast.success(`Film "${film.title}" has been approved`);
 
-      // Try to send notification but don't block on failure
+      // Try to send notification
       try {
         await notificationService.sendFilmApprovalNotification(
           film.title,
@@ -399,7 +463,7 @@ const FilmsManagement: React.FC = () => {
       }
 
       // Refresh the films list to ensure consistency
-      fetchFilms();
+      await fetchFilms();
     } catch (error) {
       console.error('Unexpected error during film approval:', error);
       toast.error('An unexpected error occurred. Please try again.');
