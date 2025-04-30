@@ -432,40 +432,49 @@ const FilmsManagement: React.FC = () => {
         }
 
         success = true;
-        const updatedFilm = data[0];
+        
+        // Only proceed with notification and state update if we have data
+        if (data && data.length > 0) {
+          const updatedFilm = data[0];
 
-        console.log('Film approved successfully:', {
-          filmId: film.id,
-          oldVersion: latestVersion.version,
-          newVersion: updatedFilm.version,
-          data: data
-        });
+          console.log('Film approved successfully:', {
+            filmId: film.id,
+            oldVersion: latestVersion.version,
+            newVersion: updatedFilm.version,
+            data: data
+          });
 
-        // Send notification to filmmaker
-        await notificationService.sendFilmApprovalNotification(
-          film.title,
-          film.filmmaker
-        );
+          // Send notification to filmmaker
+          await notificationService.sendFilmApprovalNotification(
+            film.title,
+            film.filmmaker
+          );
 
-        // Update local state
-        setFilms(prev =>
-          prev.map(f =>
-            f.id === film.id
-              ? {
-                  ...f,
-                  status: 'approved',
-                  version: updatedFilm.version,
-                  last_action: {
-                    type: 'approve',
-                    admin: currentAdmin,
-                    date: new Date().toISOString()
+          // Update local state
+          setFilms((prevFilms: FilmWithActions[]) =>
+            prevFilms.map((f: FilmWithActions) =>
+              f.id === film.id
+                ? {
+                    ...f,
+                    status: 'approved',
+                    version: updatedFilm.version,
+                    last_action: {
+                      type: 'approve',
+                      admin: currentAdmin,
+                      date: new Date().toISOString()
+                    }
                   }
-                }
-              : f
-          )
-        );
+                : f
+            )
+          );
 
-        toast.success('Film approved successfully');
+          toast.success('Film approved successfully');
+        } else {
+          // If no data returned but no error, we'll still consider it a success
+          // but we'll need to refresh the films list to get the latest state
+          await fetchFilms();
+          toast.success('Film approved successfully');
+        }
       }
 
       if (!success) {
