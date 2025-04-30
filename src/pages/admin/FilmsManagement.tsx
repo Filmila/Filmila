@@ -368,6 +368,26 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
+      // First, verify admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profileError || !profile || profile.role !== 'ADMIN') {
+        console.error('Admin role verification failed:', { profileError, profile });
+        toast.error('You do not have permission to approve films');
+        return;
+      }
+
+      console.log('Starting approval process for film:', {
+        filmId: film.id,
+        currentStatus: film.status,
+        currentVersion: film.version,
+        adminRole: profile.role
+      });
+
       // Get latest version
       const latestVersion = await getLatestFilmVersion(film.id);
       if (!latestVersion) {
@@ -375,12 +395,24 @@ const FilmsManagement: React.FC = () => {
         return;
       }
 
+      console.log('Current film state:', {
+        filmId: film.id,
+        latestVersion: latestVersion.version,
+        latestStatus: latestVersion.status
+      });
+
       const newVersion = latestVersion.version + 1;
       const maxRetries = 3;
       let retryCount = 0;
       let success = false;
 
       while (retryCount < maxRetries && !success) {
+        console.log(`Attempt ${retryCount + 1} to approve film:`, {
+          filmId: film.id,
+          currentVersion: latestVersion.version,
+          newVersion: newVersion
+        });
+
         // Update film status in database with latest version
         const { data, error: updateError } = await supabase
           .from('films')
@@ -402,15 +434,31 @@ const FilmsManagement: React.FC = () => {
             error: updateError,
             filmId: film.id,
             currentVersion: latestVersion.version,
-            newVersion: newVersion
+            newVersion: newVersion,
+            errorCode: updateError.code,
+            errorMessage: updateError.message,
+            errorDetails: updateError.details
           });
+          
+          if (updateError.code === '42501') {
+            toast.error('Permission denied. Please check your admin role.');
+            return;
+          }
+          
           if (updateError.code === '23514') {
             toast.error('Invalid status transition');
             return;
           }
+          
           toast.error('Failed to approve film. Please try again.');
           return;
         }
+
+        console.log('Update response:', {
+          filmId: film.id,
+          data: data,
+          rowsAffected: data?.length || 0
+        });
 
         if (!data || data.length === 0) {
           // Version conflict - fetch latest version and retry
@@ -420,11 +468,14 @@ const FilmsManagement: React.FC = () => {
             return;
           }
 
+          console.log('Version conflict detected:', {
+            filmId: film.id,
+            expectedVersion: latestVersion.version,
+            currentVersion: currentState.version,
+            currentStatus: currentState.status
+          });
+
           if (currentState.version !== latestVersion.version) {
-            console.log('Version conflict detected, retrying...', {
-              expectedVersion: latestVersion.version,
-              currentVersion: currentState.version
-            });
             latestVersion.version = currentState.version;
             retryCount++;
             continue;
@@ -441,6 +492,7 @@ const FilmsManagement: React.FC = () => {
             filmId: film.id,
             oldVersion: latestVersion.version,
             newVersion: updatedFilm.version,
+            newStatus: updatedFilm.status,
             data: data
           });
 
@@ -470,6 +522,7 @@ const FilmsManagement: React.FC = () => {
 
           toast.success('Film approved successfully');
         } else {
+          console.log('No data returned from update, refreshing films list');
           // If no data returned but no error, we'll still consider it a success
           // but we'll need to refresh the films list to get the latest state
           await fetchFilms();
@@ -478,6 +531,7 @@ const FilmsManagement: React.FC = () => {
       }
 
       if (!success) {
+        console.error('Failed to approve film after all retries');
         toast.error('Failed to approve film after multiple attempts. Please try again.');
       }
     } catch (error) {
