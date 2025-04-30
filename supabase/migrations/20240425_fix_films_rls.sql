@@ -29,14 +29,14 @@ CREATE POLICY "Enable admin access for admin users"
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role = 'admin'
+            AND profiles.role = 'ADMIN'
         )
     )
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM profiles
             WHERE profiles.id = auth.uid()
-            AND profiles.role = 'admin'
+            AND profiles.role = 'ADMIN'
         )
     );
 

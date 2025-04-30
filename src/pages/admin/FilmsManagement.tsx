@@ -460,31 +460,6 @@ const FilmsManagement: React.FC = () => {
           rowsAffected: data?.length || 0
         });
 
-        if (!data || data.length === 0) {
-          // Version conflict - fetch latest version and retry
-          const currentState = await getLatestFilmVersion(film.id);
-          if (!currentState) {
-            toast.error('Could not fetch current film state');
-            return;
-          }
-
-          console.log('Version conflict detected:', {
-            filmId: film.id,
-            expectedVersion: latestVersion.version,
-            currentVersion: currentState.version,
-            currentStatus: currentState.status
-          });
-
-          if (currentState.version !== latestVersion.version) {
-            latestVersion.version = currentState.version;
-            retryCount++;
-            continue;
-          }
-        }
-
-        success = true;
-        
-        // Only proceed with notification and state update if we have data
         if (data && data.length > 0) {
           const updatedFilm = data[0];
 
@@ -521,12 +496,23 @@ const FilmsManagement: React.FC = () => {
           );
 
           toast.success('Film approved successfully');
+          success = true;
         } else {
           console.log('No data returned from update, refreshing films list');
           // If no data returned but no error, we'll still consider it a success
           // but we'll need to refresh the films list to get the latest state
           await fetchFilms();
           toast.success('Film approved successfully');
+          success = true;
+        }
+
+        if (!success) {
+          retryCount++;
+          if (retryCount < maxRetries) {
+            console.log(`Retrying approval (attempt ${retryCount + 1}/${maxRetries})`);
+            // Wait a short time before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
       }
 
