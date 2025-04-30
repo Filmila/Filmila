@@ -310,34 +310,54 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (film: Film) => {
     try {
-      // Update film status in database
-      const { error: updateError } = await supabase
+      // Start a transaction for atomic updates
+      const { data: currentFilm, error: fetchError } = await supabase
+        .from('films')
+        .select('status, version')
+        .eq('id', film.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Verify film hasn't been modified by someone else
+      if (currentFilm.status !== film.status) {
+        toast.error('Film status has been modified by another user. Please refresh.');
+        return;
+      }
+
+      // Update film status in database with optimistic locking
+      const { data: updatedFilm, error: updateError } = await supabase
         .from('films')
         .update({ 
           status: 'approved',
+          version: (currentFilm.version || 0) + 1,
           last_action: {
             type: 'approve',
             admin: currentAdmin,
             date: new Date().toISOString()
           }
         })
-        .eq('id', film.id);
+        .eq('id', film.id)
+        .eq('version', currentFilm.version || 0)
+        .select()
+        .single();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        if (updateError.code === '23514') {  // Check constraint violation
+          toast.error('Invalid status transition');
+          return;
+        }
+        throw updateError;
+      }
 
-      // Update local state first
+      if (!updatedFilm) {
+        toast.error('Film was modified by another user. Please refresh.');
+        return;
+      }
+
+      // Update local state only after successful database update
       setFilms(films.map(f => 
-        f.id === film.id 
-          ? { 
-              ...f, 
-              status: 'approved',
-              last_action: {
-                type: 'approve',
-                admin: currentAdmin,
-                date: new Date().toISOString()
-              }
-            } 
-          : f
+        f.id === film.id ? updatedFilm : f
       ));
 
       // Show success message for film approval
@@ -351,16 +371,17 @@ const FilmsManagement: React.FC = () => {
         );
       } catch (notificationError) {
         console.warn('Failed to send notification:', notificationError);
-        // Show a warning toast but don't fail the approval
         toast('Film approved, but notification could not be sent to filmmaker', {
           icon: '⚠️',
           duration: 4000
         });
       }
+
+      // Refresh the films list to ensure consistency
+      fetchFilms();
     } catch (error) {
       console.error('Error approving film:', error);
-      toast.error('Failed to approve film');
-      // Optionally revert the local state change here if needed
+      toast.error('Failed to approve film. Please try again.');
     }
   };
 
