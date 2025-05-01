@@ -95,49 +95,81 @@ export const filmService = {
 
       console.log('Cleaned video URL:', videoUrl);
 
-      // Update the film and return the updated data in a single operation
-      const { data: updatedFilm, error: updateError } = await supabase
-        .from('films')
-        .update({ 
-          status, 
-          rejection_note,
-          video_url: videoUrl,
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString()
+      // Function to attempt the update
+      const attemptUpdate = async () => {
+        const { data: updatedFilm, error: updateError } = await supabase
+          .from('films')
+          .update({ 
+            status, 
+            rejection_note,
+            video_url: videoUrl,
+            last_action: {
+              type: status === 'approved' ? 'approve' : 'reject',
+              date: new Date().toISOString()
+            }
+          })
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Error updating film:', updateError);
+          throw updateError;
+        }
+
+        if (!updatedFilm) {
+          throw new Error('No data returned after update');
+        }
+
+        return updatedFilm;
+      };
+
+      // Try the update with retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+      let lastError;
+
+      while (retryCount < maxRetries) {
+        try {
+          const updatedFilm = await attemptUpdate();
+          
+          console.log('Film status updated successfully:', {
+            id: updatedFilm.id,
+            title: updatedFilm.title,
+            status: updatedFilm.status,
+            last_action: updatedFilm.last_action
+          });
+
+          // Verify the status was actually updated
+          if (updatedFilm.status !== status) {
+            console.error('Status mismatch after update:', {
+              expected: status,
+              received: updatedFilm.status,
+              film: updatedFilm
+            });
+            throw new Error('Film status was not updated correctly in the database');
           }
-        })
-        .eq('id', id)
-        .select()
-        .single();
 
-      if (updateError) {
-        console.error('Error updating film:', updateError);
-        throw new Error(`Failed to update film: ${updateError.message}`);
+          return updatedFilm;
+        } catch (error) {
+          lastError = error;
+          console.error(`Attempt ${retryCount + 1} failed:`, error);
+          
+          // If it's a JWT error, wait for token refresh
+          if (error instanceof Error && error.message.includes('JWT')) {
+            console.log('JWT error detected, waiting for token refresh...');
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            retryCount++;
+            continue;
+          }
+          
+          // For other errors, throw immediately
+          throw error;
+        }
       }
 
-      if (!updatedFilm) {
-        throw new Error('No data returned after update');
-      }
-
-      console.log('Film status updated successfully:', {
-        id: updatedFilm.id,
-        title: updatedFilm.title,
-        status: updatedFilm.status,
-        last_action: updatedFilm.last_action
-      });
-
-      // Verify the status was actually updated
-      if (updatedFilm.status !== status) {
-        console.error('Status mismatch after update:', {
-          expected: status,
-          received: updatedFilm.status,
-          film: updatedFilm
-        });
-        throw new Error('Film status was not updated correctly in the database');
-      }
-
-      return updatedFilm;
+      // If we've exhausted all retries, throw the last error
+      throw lastError || new Error('Failed to update film after multiple attempts');
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
       throw error;
