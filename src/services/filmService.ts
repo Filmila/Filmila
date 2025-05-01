@@ -97,6 +97,26 @@ export const filmService = {
 
       // Function to attempt the update
       const attemptUpdate = async () => {
+        // First verify we can access the film
+        const { data: checkData, error: checkError } = await supabase
+          .from('films')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('Error checking film access:', checkError);
+          throw new Error(`Failed to access film: ${checkError.message}`);
+        }
+
+        if (!checkData) {
+          console.error('Film not found or not accessible:', { id });
+          throw new Error('Film not found or you do not have permission to access it');
+        }
+
+        console.log('Film is accessible:', { id, title: checkData.title, status: checkData.status });
+
+        // Now attempt the update
         const { data: updatedFilm, error: updateError } = await supabase
           .from('films')
           .update({ 
@@ -110,7 +130,7 @@ export const filmService = {
           })
           .eq('id', id)
           .select()
-          .single();
+          .maybeSingle();
 
         if (updateError) {
           console.error('Error updating film:', updateError);
@@ -118,7 +138,8 @@ export const filmService = {
         }
 
         if (!updatedFilm) {
-          throw new Error('No data returned after update');
+          console.error('No film returned after update:', { id });
+          throw new Error('Film update failed - no data returned');
         }
 
         return updatedFilm;
@@ -159,6 +180,18 @@ export const filmService = {
           if (error instanceof Error && error.message.includes('JWT')) {
             console.log('JWT error detected, waiting for token refresh...');
             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+            retryCount++;
+            continue;
+          }
+
+          // If it's an RLS error, wait and retry
+          if (error instanceof Error && (
+            error.message.includes('permission') || 
+            error.message.includes('not found') ||
+            error.message.includes('not accessible')
+          )) {
+            console.log('Possible RLS issue detected, waiting before retry...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
             retryCount++;
             continue;
           }
