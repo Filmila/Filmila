@@ -166,13 +166,13 @@ export const filmService = {
         updated_at: preUpdateFilm.updated_at
       });
 
-      // Use RPC to perform a direct SQL update
+      // Perform the update
       const { data: updateResult, error: updateError } = await supabase
-        .rpc('update_film_status', {
-          film_id: id,
-          new_status: status,
-          admin_email: profile.email
-        });
+        .from('films')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', updateError);
