@@ -62,12 +62,30 @@ export const filmService = {
     try {
       console.log('Updating film status:', { id, status, rejection_note });
 
+      // First verify the user is an admin
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, email')
+        .single();
+
+      if (profileError) {
+        console.error('Error checking user role:', profileError);
+        throw new Error('Failed to verify user permissions');
+      }
+
+      if (!profile || profile.role !== 'admin') {
+        console.error('User is not an admin:', { role: profile?.role });
+        throw new Error('Only admins can update film status');
+      }
+
+      console.log('User is admin, proceeding with update');
+
       // First verify the film exists and get its current data
       const { data: existingFilm, error: checkError } = await supabase
         .from('films')
         .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (checkError) {
         console.error('Error checking film existence:', checkError);
@@ -95,134 +113,55 @@ export const filmService = {
 
       console.log('Cleaned video URL:', videoUrl);
 
-      // Function to attempt the update
-      const attemptUpdate = async () => {
-        // First verify we can access the film
-        const { data: checkData, error: checkError } = await supabase
-          .from('films')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (checkError) {
-          console.error('Error checking film access:', checkError);
-          throw new Error(`Failed to access film: ${checkError.message}`);
-        }
-
-        if (!checkData) {
-          console.error('Film not found or not accessible:', { id });
-          throw new Error('Film not found or you do not have permission to access it');
-        }
-
-        console.log('Film is accessible:', { id, title: checkData.title, status: checkData.status });
-
-        // First perform the update without selecting
-        const { error: updateError } = await supabase
-          .from('films')
-          .update({ 
-            status, 
-            rejection_note,
-            video_url: videoUrl,
-            last_action: {
-              type: status === 'approved' ? 'approve' : 'reject',
-              date: new Date().toISOString()
-            }
-          })
-          .eq('id', id);
-
-        if (updateError) {
-          console.error('Error updating film:', updateError);
-          throw updateError;
-        }
-
-        // Then fetch the updated film
-        const { data: updatedFilm, error: fetchError } = await supabase
-          .from('films')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (fetchError) {
-          console.error('Error fetching updated film:', fetchError);
-          throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
-        }
-
-        if (!updatedFilm) {
-          console.error('No film returned after update:', { id });
-          // Even if we can't fetch the updated film, the update might have succeeded
-          // Return the original film with the new status
-          return {
-            ...checkData,
-            status,
-            rejection_note,
-            last_action: {
-              type: status === 'approved' ? 'approve' : 'reject',
-              date: new Date().toISOString()
-            }
-          };
-        }
-
-        return updatedFilm;
-      };
-
-      // Try the update with retry logic
-      let retryCount = 0;
-      const maxRetries = 3;
-      let lastError;
-
-      while (retryCount < maxRetries) {
-        try {
-          const updatedFilm = await attemptUpdate();
-          
-          console.log('Film status updated successfully:', {
-            id: updatedFilm.id,
-            title: updatedFilm.title,
-            status: updatedFilm.status,
-            last_action: updatedFilm.last_action
-          });
-
-          // Verify the status was actually updated
-          if (updatedFilm.status !== status) {
-            console.error('Status mismatch after update:', {
-              expected: status,
-              received: updatedFilm.status,
-              film: updatedFilm
-            });
-            throw new Error('Film status was not updated correctly in the database');
+      // First perform the update without selecting
+      const { error: updateError } = await supabase
+        .from('films')
+        .update({ 
+          status, 
+          rejection_note,
+          video_url: videoUrl,
+          last_action: {
+            type: status === 'approved' ? 'approve' : 'reject',
+            date: new Date().toISOString(),
+            admin: profile.email // Add admin email to last_action
           }
+        })
+        .eq('id', id);
 
-          return updatedFilm;
-        } catch (error) {
-          lastError = error;
-          console.error(`Attempt ${retryCount + 1} failed:`, error);
-          
-          // If it's a JWT error, wait for token refresh
-          if (error instanceof Error && error.message.includes('JWT')) {
-            console.log('JWT error detected, waiting for token refresh...');
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-            retryCount++;
-            continue;
-          }
-
-          // If it's an RLS error, wait and retry
-          if (error instanceof Error && (
-            error.message.includes('permission') || 
-            error.message.includes('not found') ||
-            error.message.includes('not accessible')
-          )) {
-            console.log('Possible RLS issue detected, waiting before retry...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            retryCount++;
-            continue;
-          }
-          
-          // For other errors, throw immediately
-          throw error;
-        }
+      if (updateError) {
+        console.error('Error updating film:', updateError);
+        throw updateError;
       }
 
-      // If we've exhausted all retries, throw the last error
-      throw lastError || new Error('Failed to update film after multiple attempts');
+      // Then fetch the updated film
+      const { data: updatedFilm, error: fetchError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching updated film:', fetchError);
+        throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
+      }
+
+      if (!updatedFilm) {
+        console.error('No film returned after update:', { id });
+        // Even if we can't fetch the updated film, the update might have succeeded
+        // Return the original film with the new status
+        return {
+          ...existingFilm,
+          status,
+          rejection_note,
+          last_action: {
+            type: status === 'approved' ? 'approve' : 'reject',
+            date: new Date().toISOString(),
+            admin: profile.email
+          }
+        };
+      }
+
+      return updatedFilm;
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
       throw error;
