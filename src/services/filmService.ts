@@ -166,16 +166,34 @@ export const filmService = {
         updated_at: preUpdateFilm.updated_at
       });
 
-      // Perform the update
-      const { error: updateError } = await supabase
+      // Perform the update without optimistic locking
+      const { data: updateResult, error: updateError } = await supabase
         .from('films')
         .update(updateData)
         .eq('id', id)
-        .eq('status', preUpdateFilm.status); // Optimistic locking
+        .select('status, updated_at')
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         throw updateError;
+      }
+
+      if (!updateResult) {
+        console.error('No result returned from update');
+        throw new Error('Update operation did not return any data');
+      }
+
+      console.log('Update result:', updateResult);
+
+      // Verify the immediate update result
+      if (updateResult.status !== status) {
+        console.error('Status mismatch in immediate update:', {
+          expected: status,
+          actual: updateResult.status,
+          updated_at: updateResult.updated_at
+        });
+        throw new Error('Film status was not updated correctly in immediate update');
       }
 
       // Wait a short moment to ensure the update is processed
@@ -212,7 +230,8 @@ export const filmService = {
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
         original_updated_at: existingFilm.updated_at,
-        pre_update_status: preUpdateFilm.status
+        pre_update_status: preUpdateFilm.status,
+        immediate_update_status: updateResult.status
       });
 
       // Verify the status was actually updated
@@ -221,7 +240,8 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
-          pre_update_status: preUpdateFilm.status
+          pre_update_status: preUpdateFilm.status,
+          immediate_update_status: updateResult.status
         });
         throw new Error('Film status was not updated correctly');
       }
