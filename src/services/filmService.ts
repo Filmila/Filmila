@@ -86,7 +86,8 @@ export const filmService = {
         if (parts.length > 1) {
           const domain = parts[0];
           const path = parts[1].split('}')[1];
-          videoUrl = `${domain}.amazonaws.com${path}`;
+          // Remove any duplicate .amazonaws.com
+          videoUrl = `${domain}.amazonaws.com${path}`.replace('.amazonaws.com.amazonaws.com', '.amazonaws.com');
         }
       }
 
@@ -110,6 +111,38 @@ export const filmService = {
 
       if (error) {
         console.error('Error updating film status:', error);
+        if (error.code === 'PGRST116') {
+          // If no rows were found, try to update without the select
+          const { error: updateError } = await supabase
+            .from('films')
+            .update({ 
+              status, 
+              rejection_note,
+              video_url: videoUrl,
+              last_action: {
+                type: status === 'approved' ? 'approve' : 'reject',
+                date: new Date().toISOString()
+              }
+            })
+            .eq('id', id);
+
+          if (updateError) {
+            throw new Error(`Failed to update film status: ${updateError.message}`);
+          }
+
+          // If update succeeded, fetch the updated film
+          const { data: updatedFilm, error: fetchError } = await supabase
+            .from('films')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (fetchError) {
+            throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
+          }
+
+          return updatedFilm;
+        }
         throw new Error(`Failed to update film status: ${error.message}`);
       }
 
