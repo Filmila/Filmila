@@ -24,6 +24,7 @@ interface FilmWithActions extends Film {
     date: string;
     note?: string;
   };
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 const FilmsManagement: React.FC = () => {
@@ -358,7 +359,7 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const handleApprove = async (film: Film) => {
+  const handleApprove = async (film: FilmWithActions) => {
     try {
       console.log('Starting film approval process for film:', { id: film.id, title: film.title });
       const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved');
@@ -376,7 +377,7 @@ const FilmsManagement: React.FC = () => {
       // Update local state
       setFilms(prevFilms => {
         const updatedFilms = prevFilms.map(f => 
-          f.id === film.id ? { ...f, status: 'approved' } : f
+          f.id === film.id ? { ...f, status: 'approved' as const, last_action: updatedFilm.last_action } : f
         );
         console.log('Updated local films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
         return updatedFilms;
@@ -445,7 +446,7 @@ const FilmsManagement: React.FC = () => {
         {film.status === 'pending' && (
           <>
             <button
-              onClick={() => handleApprove(film)}
+              onClick={() => handleApprove(film as FilmWithActions)}
               className="text-green-600 hover:text-green-900"
               title="Approve Film"
             >
