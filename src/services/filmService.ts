@@ -134,6 +134,7 @@ export const filmService = {
         status, 
         rejection_note,
         video_url: videoUrl,
+        updated_at: new Date().toISOString(),
         last_action: {
           type: status === 'approved' ? 'approve' : 'reject',
           date: new Date().toISOString(),
@@ -160,7 +161,7 @@ export const filmService = {
       // Then fetch the updated film with a fresh query
       const { data: updatedFilms, error: fetchError } = await supabase
         .from('films')
-        .select('*')
+        .select('*, updated_at')
         .eq('id', id)
         .order('updated_at', { ascending: false })
         .limit(1);
@@ -186,16 +187,27 @@ export const filmService = {
         title: updatedFilm.title,
         status: updatedFilm.status,
         last_action: updatedFilm.last_action,
-        updated_at: updatedFilm.updated_at
+        updated_at: updatedFilm.updated_at,
+        original_updated_at: existingFilm.updated_at
       });
 
       // Verify the status was actually updated
       if (updatedFilm.status !== status) {
         console.error('Status mismatch after update:', {
           expected: status,
-          actual: updatedFilm.status
+          actual: updatedFilm.status,
+          updated_at: updatedFilm.updated_at
         });
         throw new Error('Film status was not updated correctly');
+      }
+
+      // Verify the updated_at timestamp was updated
+      if (!updatedFilm.updated_at || updatedFilm.updated_at === existingFilm.updated_at) {
+        console.error('Updated timestamp not changed:', {
+          before: existingFilm.updated_at,
+          after: updatedFilm.updated_at
+        });
+        throw new Error('Film update timestamp was not updated correctly');
       }
 
       return updatedFilm;
