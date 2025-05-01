@@ -295,13 +295,8 @@ const FilmsManagement: React.FC = () => {
         )
       );
       
-      // Update the films list with all updated films
-      setFilms(prevFilms => 
-        prevFilms.map(film => {
-          const updatedFilm = results.find(r => r.id === film.id);
-          return updatedFilm ? { ...film, ...updatedFilm } : film;
-        })
-      );
+      // Refresh the films list to ensure we have the latest data
+      await fetchFilms();
       
       setSelectedFilms(new Set());
       toast.success('Selected films approved successfully');
@@ -365,14 +360,8 @@ const FilmsManagement: React.FC = () => {
       const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved');
       console.log('Film approval response:', updatedFilm);
 
-      // Update local state
-      setFilms(prevFilms => {
-        const updatedFilms = prevFilms.map(f => 
-          f.id === film.id ? { ...f, ...updatedFilm } : f
-        );
-        console.log('Updated local films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
-        return updatedFilms;
-      });
+      // Refresh the films list to ensure we have the latest data
+      await fetchFilms();
 
       toast.success('Film approved successfully');
     } catch (error) {
