@@ -37,7 +37,7 @@ const FilmmakerDashboard = () => {
       const subscription = supabase
         .channel('films-channel')
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           {
             event: '*',
             schema: 'public',
