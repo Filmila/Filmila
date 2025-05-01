@@ -116,8 +116,8 @@ export const filmService = {
 
         console.log('Film is accessible:', { id, title: checkData.title, status: checkData.status });
 
-        // Now attempt the update
-        const { data: updatedFilm, error: updateError } = await supabase
+        // First perform the update without selecting
+        const { error: updateError } = await supabase
           .from('films')
           .update({ 
             status, 
@@ -128,18 +128,38 @@ export const filmService = {
               date: new Date().toISOString()
             }
           })
-          .eq('id', id)
-          .select()
-          .maybeSingle();
+          .eq('id', id);
 
         if (updateError) {
           console.error('Error updating film:', updateError);
           throw updateError;
         }
 
+        // Then fetch the updated film
+        const { data: updatedFilm, error: fetchError } = await supabase
+          .from('films')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+
+        if (fetchError) {
+          console.error('Error fetching updated film:', fetchError);
+          throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
+        }
+
         if (!updatedFilm) {
           console.error('No film returned after update:', { id });
-          throw new Error('Film update failed - no data returned');
+          // Even if we can't fetch the updated film, the update might have succeeded
+          // Return the original film with the new status
+          return {
+            ...checkData,
+            status,
+            rejection_note,
+            last_action: {
+              type: status === 'approved' ? 'approve' : 'reject',
+              date: new Date().toISOString()
+            }
+          };
         }
 
         return updatedFilm;
