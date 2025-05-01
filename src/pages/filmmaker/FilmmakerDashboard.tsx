@@ -80,55 +80,10 @@ const FilmmakerDashboard = () => {
             });
 
             try {
-              switch (payload.eventType) {
-                case 'INSERT':
-                  console.log('Handling INSERT event');
-                  setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
-                  break;
-                case 'DELETE':
-                  console.log('Handling DELETE event');
-                  setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old?.id));
-                  break;
-                case 'UPDATE':
-                  console.log('Handling UPDATE event');
-                  // Fetch the latest film data to ensure we have the most up-to-date status
-                  const { data: updatedFilm, error } = await supabase
-                    .from('films')
-                    .select('*')
-                    .eq('id', payload.new?.id)
-                    .single();
-
-                  if (error) {
-                    console.error('Error fetching updated film:', error);
-                    throw error;
-                  }
-
-                  console.log('Fetched updated film:', updatedFilm);
-
-                  setFilms(prevFilms => {
-                    const updated = prevFilms.map(film => {
-                      if (film.id === payload.new?.id) {
-                        console.log('Updating film in state:', {
-                          oldStatus: film.status,
-                          newStatus: updatedFilm.status,
-                          filmId: film.id
-                        });
-                        return updatedFilm as Film;
-                      }
-                      return film;
-                    });
-                    console.log('Updated films state:', updated);
-                    return updated;
-                  });
-                  break;
-                default:
-                  console.log('Unhandled event type, fetching all films');
-                  fetchFilms();
-              }
+              // Always fetch the latest data to ensure we have the most up-to-date state
+              await fetchFilms();
             } catch (error) {
               console.error('Error handling real-time update:', error);
-              // Fallback to fetching all films on error
-              fetchFilms();
             }
           }
         )
@@ -136,10 +91,14 @@ const FilmmakerDashboard = () => {
           console.log('Subscription status:', status);
         });
 
-      // Cleanup subscription
+      // Set up a periodic refresh every 30 seconds to ensure data consistency
+      const refreshInterval = setInterval(fetchFilms, 30000);
+
+      // Cleanup subscription and interval
       return () => {
-        console.log('Cleaning up real-time subscription');
+        console.log('Cleaning up real-time subscription and interval');
         subscription.unsubscribe();
+        clearInterval(refreshInterval);
       };
     }
   }, [user?.email]);

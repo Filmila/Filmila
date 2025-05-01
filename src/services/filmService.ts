@@ -94,7 +94,7 @@ export const filmService = {
       console.log('Cleaned video URL:', videoUrl);
 
       // Update the film with the new status and cleaned video URL
-      const { error: updateError } = await supabase
+      const { data: updatedData, error: updateError } = await supabase
         .from('films')
         .update({ 
           status, 
@@ -105,31 +105,21 @@ export const filmService = {
             date: new Date().toISOString()
           }
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         throw new Error(`Failed to update film: ${updateError.message}`);
       }
 
-      // Fetch the updated film
-      const { data: updatedFilm, error: fetchError } = await supabase
-        .from('films')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching updated film:', fetchError);
-        throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
-      }
-
-      if (!updatedFilm) {
+      if (!updatedData) {
         throw new Error('No data returned after update');
       }
 
-      console.log('Film status updated successfully:', updatedFilm);
-      return updatedFilm;
+      console.log('Film status updated successfully:', updatedData);
+      return updatedData;
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
       throw error;
