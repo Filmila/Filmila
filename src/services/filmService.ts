@@ -129,19 +129,24 @@ export const filmService = {
 
       console.log('Cleaned video URL:', videoUrl);
 
+      // Prepare the update data
+      const updateData = { 
+        status, 
+        rejection_note,
+        video_url: videoUrl,
+        last_action: {
+          type: status === 'approved' ? 'approve' : 'reject',
+          date: new Date().toISOString(),
+          admin: profile.email
+        }
+      };
+
+      console.log('Attempting update with data:', updateData);
+
       // First perform the update without selecting
       const { error: updateError } = await supabase
         .from('films')
-        .update({ 
-          status, 
-          rejection_note,
-          video_url: videoUrl,
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString(),
-            admin: profile.email
-          }
-        })
+        .update(updateData)
         .eq('id', id);
 
       if (updateError) {
@@ -149,11 +154,16 @@ export const filmService = {
         throw updateError;
       }
 
-      // Then fetch the updated film
+      // Wait a short moment to ensure the update is processed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Then fetch the updated film with a fresh query
       const { data: updatedFilms, error: fetchError } = await supabase
         .from('films')
         .select('*')
-        .eq('id', id);
+        .eq('id', id)
+        .order('updated_at', { ascending: false })
+        .limit(1);
 
       if (fetchError) {
         console.error('Error fetching updated film:', fetchError);
@@ -166,13 +176,7 @@ export const filmService = {
         // Return the original film with the new status
         return {
           ...existingFilm,
-          status,
-          rejection_note,
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString(),
-            admin: profile.email
-          }
+          ...updateData
         };
       }
 
@@ -181,8 +185,18 @@ export const filmService = {
         id: updatedFilm.id,
         title: updatedFilm.title,
         status: updatedFilm.status,
-        last_action: updatedFilm.last_action
+        last_action: updatedFilm.last_action,
+        updated_at: updatedFilm.updated_at
       });
+
+      // Verify the status was actually updated
+      if (updatedFilm.status !== status) {
+        console.error('Status mismatch after update:', {
+          expected: status,
+          actual: updatedFilm.status
+        });
+        throw new Error('Film status was not updated correctly');
+      }
 
       return updatedFilm;
     } catch (error) {
