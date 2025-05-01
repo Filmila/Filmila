@@ -145,33 +145,14 @@ export const filmService = {
       console.log('Attempting update with data:', updateData);
 
       // First perform the update without selecting
-      const { data: updateResult, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('films')
         .update(updateData)
-        .eq('id', id)
-        .select('status, updated_at')
-        .single();
+        .eq('id', id);
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         throw updateError;
-      }
-
-      if (!updateResult) {
-        console.error('No result returned from update');
-        throw new Error('Update operation did not return any data');
-      }
-
-      console.log('Update result:', updateResult);
-
-      // Verify the immediate update result
-      if (updateResult.status !== status) {
-        console.error('Status mismatch in immediate update:', {
-          expected: status,
-          actual: updateResult.status,
-          updated_at: updateResult.updated_at
-        });
-        throw new Error('Film status was not updated correctly in immediate update');
       }
 
       // Wait a short moment to ensure the update is processed
@@ -215,8 +196,7 @@ export const filmService = {
         console.error('Status mismatch after update:', {
           expected: status,
           actual: updatedFilm.status,
-          updated_at: updatedFilm.updated_at,
-          immediate_update_status: updateResult.status
+          updated_at: updatedFilm.updated_at
         });
         throw new Error('Film status was not updated correctly');
       }
