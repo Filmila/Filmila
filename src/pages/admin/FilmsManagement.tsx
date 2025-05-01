@@ -344,30 +344,32 @@ const FilmsManagement: React.FC = () => {
 
   const handleApprove = async (id: string) => {
     try {
+      console.log('Attempting to approve film:', id);
       await filmService.updateFilmStatus(id, 'approved', undefined);
       await fetchFilms(); // Refresh the films list
       toast.success('Film approved successfully');
     } catch (error) {
       console.error('Error approving film:', error);
       if (error instanceof Error) {
-        toast.error(error.message);
+        toast.error(`Failed to approve film: ${error.message}`);
       } else {
-        toast.error('Failed to approve film');
+        toast.error('Failed to approve film. Please try again.');
       }
     }
   };
 
   const handleReject = async (id: string) => {
     try {
+      console.log('Attempting to reject film:', id);
       await filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin');
       await fetchFilms(); // Refresh the films list
       toast.success('Film rejected successfully');
     } catch (error) {
       console.error('Error rejecting film:', error);
       if (error instanceof Error) {
-        toast.error(error.message);
+        toast.error(`Failed to reject film: ${error.message}`);
       } else {
-        toast.error('Failed to reject film');
+        toast.error('Failed to reject film. Please try again.');
       }
     }
   };

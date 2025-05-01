@@ -3,6 +3,17 @@ import { Film } from '../types';
 
 export const filmService = {
   async createFilm(film: Omit<Film, 'id'>): Promise<Film> {
+    // Validate the upload date
+    const uploadDate = new Date(film.upload_date);
+    if (isNaN(uploadDate.getTime()) || uploadDate > new Date()) {
+      throw new Error('Invalid upload date');
+    }
+
+    // Validate the video URL
+    if (!film.video_url || !film.video_url.startsWith('https://')) {
+      throw new Error('Invalid video URL');
+    }
+
     const { data, error } = await supabase
       .from('films')
       .insert([{
@@ -14,7 +25,7 @@ export const filmService = {
         revenue: film.revenue,
         status: film.status,
         rejection_note: film.rejection_note,
-        upload_date: film.upload_date,
+        upload_date: uploadDate.toISOString(),
         video_url: film.video_url,
         last_action: film.last_action,
         version: film.version
@@ -49,23 +60,45 @@ export const filmService = {
 
   async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
     try {
-      // First verify the film exists
+      console.log('Updating film status:', { id, status, rejection_note });
+
+      // First verify the film exists and get its current data
       const { data: existingFilm, error: checkError } = await supabase
         .from('films')
-        .select('id')
+        .select('*')
         .eq('id', id)
         .single();
 
-      if (checkError || !existingFilm) {
-        throw new Error('Film not found');
+      if (checkError) {
+        console.error('Error checking film existence:', checkError);
+        throw new Error(`Film not found: ${checkError.message}`);
       }
 
-      // Update the film with the new status
+      if (!existingFilm) {
+        throw new Error(`Film with ID ${id} not found`);
+      }
+
+      // Clean up the video URL if it contains test code
+      let videoUrl = existingFilm.video_url;
+      if (videoUrl && videoUrl.includes('async()=>{')) {
+        // Extract the actual URL by removing the test code
+        const parts = videoUrl.split('.async()=>{');
+        if (parts.length > 1) {
+          const domain = parts[0];
+          const path = parts[1].split('}')[1];
+          videoUrl = `${domain}.amazonaws.com${path}`;
+        }
+      }
+
+      console.log('Cleaned video URL:', videoUrl);
+
+      // Update the film with the new status and cleaned video URL
       const { data, error } = await supabase
         .from('films')
         .update({ 
           status, 
           rejection_note,
+          video_url: videoUrl,
           last_action: {
             type: status === 'approved' ? 'approve' : 'reject',
             date: new Date().toISOString()
@@ -77,13 +110,14 @@ export const filmService = {
 
       if (error) {
         console.error('Error updating film status:', error);
-        throw error;
+        throw new Error(`Failed to update film status: ${error.message}`);
       }
 
       if (!data) {
-        throw new Error('Failed to update film status');
+        throw new Error('No data returned after update');
       }
 
+      console.log('Film status updated successfully:', data);
       return data;
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
