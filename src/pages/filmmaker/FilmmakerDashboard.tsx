@@ -15,16 +15,33 @@ const FilmmakerDashboard = () => {
   const pendingFilms = films.filter(film => film.status === 'pending');
   const rejectedFilms = films.filter(film => film.status === 'rejected');
 
+  // Monitor films state changes
+  useEffect(() => {
+    console.log('Films state updated:', {
+      totalFilms: films.length,
+      approvedCount: approvedFilms.length,
+      pendingCount: pendingFilms.length,
+      rejectedCount: rejectedFilms.length,
+      films: films.map(f => ({ id: f.id, title: f.title, status: f.status }))
+    });
+  }, [films, approvedFilms.length, pendingFilms.length, rejectedFilms.length]);
+
   useEffect(() => {
     const fetchFilms = async () => {
       try {
+        console.log('Fetching films for filmmaker:', user?.email);
         const { data, error } = await supabase
           .from('films')
           .select('*')
           .eq('filmmaker', user?.email)
           .order('upload_date', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching films:', error);
+          throw error;
+        }
+
+        console.log('Fetched films:', data?.map(f => ({ id: f.id, title: f.title, status: f.status })));
         setFilms(data || []);
       } catch (error) {
         console.error('Error fetching films:', error);
@@ -64,6 +81,13 @@ const FilmmakerDashboard = () => {
             // Only process updates for this filmmaker's films
             if (payload.new && payload.new.filmmaker === user.email) {
               try {
+                console.log('Processing real-time update for filmmaker:', {
+                  eventType: payload.eventType,
+                  filmId: payload.new.id,
+                  newStatus: payload.new.status,
+                  filmmaker: payload.new.filmmaker
+                });
+
                 switch (payload.eventType) {
                   case 'INSERT':
                     console.log('Handling INSERT event');
@@ -76,9 +100,16 @@ const FilmmakerDashboard = () => {
                   case 'UPDATE':
                     console.log('Handling UPDATE event');
                     setFilms(prevFilms => {
-                      const updated = prevFilms.map(film => 
-                        film.id === payload.new?.id ? payload.new as Film : film
-                      );
+                      const updated = prevFilms.map(film => {
+                        if (film.id === payload.new?.id) {
+                          console.log('Updating film in state:', {
+                            oldStatus: film.status,
+                            newStatus: payload.new.status
+                          });
+                          return payload.new as Film;
+                        }
+                        return film;
+                      });
                       console.log('Updated films state:', updated);
                       return updated;
                     });
@@ -92,6 +123,11 @@ const FilmmakerDashboard = () => {
                 // Fallback to fetching all films on error
                 fetchFilms();
               }
+            } else {
+              console.log('Ignoring update for different filmmaker:', {
+                payloadFilmmaker: payload.new?.filmmaker,
+                currentUser: user.email
+              });
             }
           }
         )
