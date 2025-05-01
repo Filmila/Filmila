@@ -364,20 +364,11 @@ const FilmsManagement: React.FC = () => {
       console.log('Starting film approval process for film:', { id: film.id, title: film.title });
       const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved');
       console.log('Film approval response:', updatedFilm);
-      
-      if (updatedFilm.status !== 'approved') {
-        console.error('Film status mismatch:', { 
-          expected: 'approved', 
-          received: updatedFilm.status,
-          film: updatedFilm 
-        });
-        throw new Error('Film status was not updated correctly');
-      }
 
       // Update local state
       setFilms(prevFilms => {
         const updatedFilms = prevFilms.map(f => 
-          f.id === film.id ? { ...f, status: 'approved' as const, last_action: updatedFilm.last_action } : f
+          f.id === film.id ? { ...f, ...updatedFilm } : f
         );
         console.log('Updated local films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
         return updatedFilms;
