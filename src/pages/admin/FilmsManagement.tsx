@@ -289,7 +289,7 @@ const FilmsManagement: React.FC = () => {
 
   const handleBulkApprove = async () => {
     try {
-      const results = await Promise.all(
+      await Promise.all(
         Array.from(selected_films).map(id => 
           filmService.updateFilmStatus(id, 'approved', undefined)
         )
