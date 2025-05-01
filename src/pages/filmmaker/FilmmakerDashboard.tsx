@@ -64,9 +64,10 @@ const FilmmakerDashboard = () => {
           {
             event: '*',
             schema: 'public',
-            table: 'films'
+            table: 'films',
+            filter: `filmmaker=eq.${user.email}`
           },
-          (payload: { 
+          async (payload: { 
             eventType: 'INSERT' | 'UPDATE' | 'DELETE',
             old: Film | null,
             new: Film | null
@@ -78,56 +79,56 @@ const FilmmakerDashboard = () => {
               filmmaker: user.email
             });
 
-            // Only process updates for this filmmaker's films
-            if (payload.new && payload.new.filmmaker === user.email) {
-              try {
-                console.log('Processing real-time update for filmmaker:', {
-                  eventType: payload.eventType,
-                  filmId: payload.new.id,
-                  newStatus: payload.new.status,
-                  filmmaker: payload.new.filmmaker
-                });
+            try {
+              switch (payload.eventType) {
+                case 'INSERT':
+                  console.log('Handling INSERT event');
+                  setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
+                  break;
+                case 'DELETE':
+                  console.log('Handling DELETE event');
+                  setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old?.id));
+                  break;
+                case 'UPDATE':
+                  console.log('Handling UPDATE event');
+                  // Fetch the latest film data to ensure we have the most up-to-date status
+                  const { data: updatedFilm, error } = await supabase
+                    .from('films')
+                    .select('*')
+                    .eq('id', payload.new?.id)
+                    .single();
 
-                switch (payload.eventType) {
-                  case 'INSERT':
-                    console.log('Handling INSERT event');
-                    setFilms(prevFilms => [payload.new as Film, ...prevFilms]);
-                    break;
-                  case 'DELETE':
-                    console.log('Handling DELETE event');
-                    setFilms(prevFilms => prevFilms.filter(film => film.id !== payload.old?.id));
-                    break;
-                  case 'UPDATE':
-                    console.log('Handling UPDATE event');
-                    setFilms(prevFilms => {
-                      const updated = prevFilms.map(film => {
-                        if (film.id === payload.new?.id) {
-                          console.log('Updating film in state:', {
-                            oldStatus: film.status,
-                            newStatus: payload.new.status
-                          });
-                          return payload.new as Film;
-                        }
-                        return film;
-                      });
-                      console.log('Updated films state:', updated);
-                      return updated;
+                  if (error) {
+                    console.error('Error fetching updated film:', error);
+                    throw error;
+                  }
+
+                  console.log('Fetched updated film:', updatedFilm);
+
+                  setFilms(prevFilms => {
+                    const updated = prevFilms.map(film => {
+                      if (film.id === payload.new?.id) {
+                        console.log('Updating film in state:', {
+                          oldStatus: film.status,
+                          newStatus: updatedFilm.status,
+                          filmId: film.id
+                        });
+                        return updatedFilm as Film;
+                      }
+                      return film;
                     });
-                    break;
-                  default:
-                    console.log('Unhandled event type, fetching all films');
-                    fetchFilms();
-                }
-              } catch (error) {
-                console.error('Error handling real-time update:', error);
-                // Fallback to fetching all films on error
-                fetchFilms();
+                    console.log('Updated films state:', updated);
+                    return updated;
+                  });
+                  break;
+                default:
+                  console.log('Unhandled event type, fetching all films');
+                  fetchFilms();
               }
-            } else {
-              console.log('Ignoring update for different filmmaker:', {
-                payloadFilmmaker: payload.new?.filmmaker,
-                currentUser: user.email
-              });
+            } catch (error) {
+              console.error('Error handling real-time update:', error);
+              // Fallback to fetching all films on error
+              fetchFilms();
             }
           }
         )
