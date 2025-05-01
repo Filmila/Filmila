@@ -100,10 +100,17 @@ const FilmmakerDashboard = () => {
         )
         .subscribe((status) => {
           console.log('Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to real-time updates');
+          } else if (status === 'CLOSED') {
+            console.log('Real-time subscription closed');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Error in real-time subscription');
+          }
         });
 
-      // Set up a periodic refresh every 10 seconds to ensure data consistency
-      const refreshInterval = setInterval(fetchFilms, 10000);
+      // Set up a periodic refresh every 5 seconds to ensure data consistency
+      const refreshInterval = setInterval(fetchFilms, 5000);
 
       // Cleanup subscription and interval
       return () => {

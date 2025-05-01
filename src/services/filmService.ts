@@ -78,6 +78,8 @@ export const filmService = {
         throw new Error(`Film with ID ${id} not found`);
       }
 
+      console.log('Current film data:', existingFilm);
+
       // Clean up the video URL if it contains test code
       let videoUrl = existingFilm.video_url;
       if (videoUrl && videoUrl.includes('async()=>{')) {
@@ -128,7 +130,23 @@ export const filmService = {
         throw new Error('No data returned after update');
       }
 
-      console.log('Film status updated successfully:', updatedFilm);
+      console.log('Film status updated successfully:', {
+        id: updatedFilm.id,
+        title: updatedFilm.title,
+        status: updatedFilm.status,
+        last_action: updatedFilm.last_action
+      });
+
+      // Verify the status was actually updated
+      if (updatedFilm.status !== status) {
+        console.error('Status mismatch after update:', {
+          expected: status,
+          received: updatedFilm.status,
+          film: updatedFilm
+        });
+        throw new Error('Film status was not updated correctly in the database');
+      }
+
       return updatedFilm;
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
