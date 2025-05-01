@@ -144,11 +144,34 @@ export const filmService = {
 
       console.log('Attempting update with data:', updateData);
 
-      // First perform the update without selecting
+      // First verify the film exists and is in the correct state
+      const { data: preUpdateFilm, error: preUpdateError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (preUpdateError) {
+        console.error('Error checking pre-update film state:', preUpdateError);
+        throw new Error('Failed to verify film state before update');
+      }
+
+      if (!preUpdateFilm) {
+        throw new Error(`Film with ID ${id} not found`);
+      }
+
+      console.log('Pre-update film state:', {
+        id: preUpdateFilm.id,
+        status: preUpdateFilm.status,
+        updated_at: preUpdateFilm.updated_at
+      });
+
+      // Perform the update
       const { error: updateError } = await supabase
         .from('films')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('status', preUpdateFilm.status); // Optimistic locking
 
       if (updateError) {
         console.error('Error updating film:', updateError);
@@ -182,13 +205,14 @@ export const filmService = {
       }
 
       const updatedFilm = updatedFilms[0];
-      console.log('Film status updated successfully:', {
+      console.log('Post-update film state:', {
         id: updatedFilm.id,
         title: updatedFilm.title,
         status: updatedFilm.status,
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
-        original_updated_at: existingFilm.updated_at
+        original_updated_at: existingFilm.updated_at,
+        pre_update_status: preUpdateFilm.status
       });
 
       // Verify the status was actually updated
@@ -196,7 +220,8 @@ export const filmService = {
         console.error('Status mismatch after update:', {
           expected: status,
           actual: updatedFilm.status,
-          updated_at: updatedFilm.updated_at
+          updated_at: updatedFilm.updated_at,
+          pre_update_status: preUpdateFilm.status
         });
         throw new Error('Film status was not updated correctly');
       }
