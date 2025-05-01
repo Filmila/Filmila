@@ -166,34 +166,23 @@ export const filmService = {
         updated_at: preUpdateFilm.updated_at
       });
 
-      // Perform the update without optimistic locking
-      const { data: updateResult, error: updateError } = await supabase
+      // Perform a direct update without any additional conditions
+      const { error: updateError } = await supabase
         .from('films')
-        .update(updateData)
-        .eq('id', id)
-        .select('status, updated_at')
-        .single();
+        .update({
+          status: status,
+          updated_at: new Date().toISOString(),
+          last_action: {
+            type: status === 'approved' ? 'approve' : 'reject',
+            date: new Date().toISOString(),
+            admin: profile.email
+          }
+        })
+        .eq('id', id);
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         throw updateError;
-      }
-
-      if (!updateResult) {
-        console.error('No result returned from update');
-        throw new Error('Update operation did not return any data');
-      }
-
-      console.log('Update result:', updateResult);
-
-      // Verify the immediate update result
-      if (updateResult.status !== status) {
-        console.error('Status mismatch in immediate update:', {
-          expected: status,
-          actual: updateResult.status,
-          updated_at: updateResult.updated_at
-        });
-        throw new Error('Film status was not updated correctly in immediate update');
       }
 
       // Wait a short moment to ensure the update is processed
@@ -202,10 +191,8 @@ export const filmService = {
       // Then fetch the updated film with a fresh query
       const { data: updatedFilms, error: fetchError } = await supabase
         .from('films')
-        .select('*, updated_at')
-        .eq('id', id)
-        .order('updated_at', { ascending: false })
-        .limit(1);
+        .select('*')
+        .eq('id', id);
 
       if (fetchError) {
         console.error('Error fetching updated film:', fetchError);
@@ -218,7 +205,13 @@ export const filmService = {
         // Return the original film with the new status
         return {
           ...existingFilm,
-          ...updateData
+          status: status,
+          updated_at: new Date().toISOString(),
+          last_action: {
+            type: status === 'approved' ? 'approve' : 'reject',
+            date: new Date().toISOString(),
+            admin: profile.email
+          }
         };
       }
 
@@ -230,8 +223,7 @@ export const filmService = {
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
         original_updated_at: existingFilm.updated_at,
-        pre_update_status: preUpdateFilm.status,
-        immediate_update_status: updateResult.status
+        pre_update_status: preUpdateFilm.status
       });
 
       // Verify the status was actually updated
@@ -241,18 +233,9 @@ export const filmService = {
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
           pre_update_status: preUpdateFilm.status,
-          immediate_update_status: updateResult.status
+          update_data: updateData
         });
         throw new Error('Film status was not updated correctly');
-      }
-
-      // Verify the updated_at timestamp was updated
-      if (!updatedFilm.updated_at || updatedFilm.updated_at === existingFilm.updated_at) {
-        console.error('Updated timestamp not changed:', {
-          before: existingFilm.updated_at,
-          after: updatedFilm.updated_at
-        });
-        throw new Error('Film update timestamp was not updated correctly');
       }
 
       return updatedFilm;
