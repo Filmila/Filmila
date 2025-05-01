@@ -94,7 +94,7 @@ export const filmService = {
       console.log('Cleaned video URL:', videoUrl);
 
       // Update the film with the new status and cleaned video URL
-      const { data, error } = await supabase
+      const { error: updateError } = await supabase
         .from('films')
         .update({ 
           status, 
@@ -105,53 +105,31 @@ export const filmService = {
             date: new Date().toISOString()
           }
         })
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
 
-      if (error) {
-        console.error('Error updating film status:', error);
-        if (error.code === 'PGRST116') {
-          // If no rows were found, try to update without the select
-          const { error: updateError } = await supabase
-            .from('films')
-            .update({ 
-              status, 
-              rejection_note,
-              video_url: videoUrl,
-              last_action: {
-                type: status === 'approved' ? 'approve' : 'reject',
-                date: new Date().toISOString()
-              }
-            })
-            .eq('id', id);
-
-          if (updateError) {
-            throw new Error(`Failed to update film status: ${updateError.message}`);
-          }
-
-          // If update succeeded, fetch the updated film
-          const { data: updatedFilm, error: fetchError } = await supabase
-            .from('films')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-          if (fetchError) {
-            throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
-          }
-
-          return updatedFilm;
-        }
-        throw new Error(`Failed to update film status: ${error.message}`);
+      if (updateError) {
+        console.error('Error updating film:', updateError);
+        throw new Error(`Failed to update film: ${updateError.message}`);
       }
 
-      if (!data) {
+      // Fetch the updated film
+      const { data: updatedFilm, error: fetchError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching updated film:', fetchError);
+        throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
+      }
+
+      if (!updatedFilm) {
         throw new Error('No data returned after update');
       }
 
-      console.log('Film status updated successfully:', data);
-      return data;
+      console.log('Film status updated successfully:', updatedFilm);
+      return updatedFilm;
     } catch (error) {
       console.error('Error in updateFilmStatus:', error);
       throw error;
