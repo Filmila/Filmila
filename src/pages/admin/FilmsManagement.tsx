@@ -358,26 +358,34 @@ const FilmsManagement: React.FC = () => {
     setIsWatchModalOpen(true);
   };
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (film: Film) => {
     try {
-      console.log('Attempting to approve film:', id);
-      const updatedFilm = await filmService.updateFilmStatus(id, 'approved', undefined);
+      console.log('Starting film approval process for film:', { id: film.id, title: film.title });
+      const updatedFilm = await filmService.updateFilmStatus(film.id, 'approved');
+      console.log('Film approval response:', updatedFilm);
       
-      // Update the films list with the updated film
-      setFilms(prevFilms => 
-        prevFilms.map(film => 
-          film.id === id ? { ...film, ...updatedFilm } : film
-        )
-      );
-      
+      if (updatedFilm.status !== 'approved') {
+        console.error('Film status mismatch:', { 
+          expected: 'approved', 
+          received: updatedFilm.status,
+          film: updatedFilm 
+        });
+        throw new Error('Film status was not updated correctly');
+      }
+
+      // Update local state
+      setFilms(prevFilms => {
+        const updatedFilms = prevFilms.map(f => 
+          f.id === film.id ? { ...f, status: 'approved' } : f
+        );
+        console.log('Updated local films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
+        return updatedFilms;
+      });
+
       toast.success('Film approved successfully');
     } catch (error) {
       console.error('Error approving film:', error);
-      if (error instanceof Error) {
-        toast.error(`Failed to approve film: ${error.message}`);
-      } else {
-        toast.error('Failed to approve film. Please try again.');
-      }
+      toast.error(error instanceof Error ? error.message : 'Failed to approve film');
     }
   };
 
@@ -437,7 +445,7 @@ const FilmsManagement: React.FC = () => {
         {film.status === 'pending' && (
           <>
             <button
-              onClick={() => handleApprove(film.id)}
+              onClick={() => handleApprove(film)}
               className="text-green-600 hover:text-green-900"
               title="Approve Film"
             >

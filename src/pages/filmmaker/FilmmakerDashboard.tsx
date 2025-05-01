@@ -79,8 +79,19 @@ const FilmmakerDashboard = () => {
               filmmaker: user.email
             });
 
+            // Immediately update the films state with the new data
+            if (payload.eventType === 'UPDATE' && payload.new) {
+              setFilms(prevFilms => {
+                const updatedFilms = prevFilms.map(film => 
+                  film.id === payload.new?.id ? payload.new : film
+                );
+                console.log('Updated films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
+                return updatedFilms;
+              });
+            }
+
+            // Also fetch fresh data to ensure consistency
             try {
-              // Always fetch the latest data to ensure we have the most up-to-date state
               await fetchFilms();
             } catch (error) {
               console.error('Error handling real-time update:', error);
@@ -91,8 +102,8 @@ const FilmmakerDashboard = () => {
           console.log('Subscription status:', status);
         });
 
-      // Set up a periodic refresh every 30 seconds to ensure data consistency
-      const refreshInterval = setInterval(fetchFilms, 30000);
+      // Set up a periodic refresh every 10 seconds to ensure data consistency
+      const refreshInterval = setInterval(fetchFilms, 10000);
 
       // Cleanup subscription and interval
       return () => {
