@@ -95,8 +95,8 @@ export const filmService = {
 
       console.log('Cleaned video URL:', videoUrl);
 
-      // First update the film
-      const { error: updateError } = await supabase
+      // Update the film and return the updated data in a single operation
+      const { data: updatedFilm, error: updateError } = await supabase
         .from('films')
         .update({ 
           status, 
@@ -107,23 +107,13 @@ export const filmService = {
             date: new Date().toISOString()
           }
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', updateError);
         throw new Error(`Failed to update film: ${updateError.message}`);
-      }
-
-      // Then fetch the updated film
-      const { data: updatedFilm, error: fetchError } = await supabase
-        .from('films')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) {
-        console.error('Error fetching updated film:', fetchError);
-        throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
       }
 
       if (!updatedFilm) {

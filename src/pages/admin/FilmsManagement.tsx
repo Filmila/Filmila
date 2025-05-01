@@ -70,6 +70,7 @@ const FilmsManagement: React.FC = () => {
     fetchFilms();
 
     // Set up real-time subscription
+    console.log('Setting up real-time subscription for films');
     const subscription = supabase
       .channel('films-changes')
       .on(
@@ -80,17 +81,46 @@ const FilmsManagement: React.FC = () => {
           table: 'films'
         },
         (payload) => {
-          console.log('Real-time update received:', payload);
-          fetchFilms(); // Refresh the entire list when any change occurs
+          console.log('Real-time update received:', {
+            eventType: payload.eventType,
+            old: payload.old,
+            new: payload.new
+          });
+          
+          // Immediately update the films state with the new data
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setFilms(prevFilms => {
+              const updatedFilms = prevFilms.map(film => 
+                film.id === payload.new?.id ? { ...film, ...payload.new } as FilmWithActions : film
+              );
+              console.log('Updated films state:', updatedFilms.map(f => ({ id: f.id, title: f.title, status: f.status })));
+              return updatedFilms;
+            });
+          }
+          
+          // Also fetch fresh data to ensure consistency
+          fetchFilms();
         }
       )
       .subscribe((status) => {
         console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to real-time updates');
+        } else if (status === 'CLOSED') {
+          console.log('Real-time subscription closed');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Error in real-time subscription');
+        }
       });
 
-    // Cleanup subscription
+    // Set up a periodic refresh every 5 seconds to ensure data consistency
+    const refreshInterval = setInterval(fetchFilms, 5000);
+
+    // Cleanup subscription and interval
     return () => {
+      console.log('Cleaning up real-time subscription and interval');
       subscription.unsubscribe();
+      clearInterval(refreshInterval);
     };
   }, []);
 
