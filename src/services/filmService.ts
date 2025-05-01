@@ -78,8 +78,19 @@ export const filmService = {
       }
 
       const profile = profiles[0];
-      if (profile.role !== 'admin') {
-        console.error('User is not an admin:', { role: profile.role });
+      const normalizedRole = profile.role.toLowerCase();
+      console.log('User role check:', { 
+        original: profile.role, 
+        normalized: normalizedRole,
+        email: profile.email 
+      });
+
+      if (normalizedRole !== 'admin') {
+        console.error('User is not an admin:', { 
+          role: profile.role,
+          normalized: normalizedRole,
+          email: profile.email 
+        });
         throw new Error('Only admins can update film status');
       }
 
