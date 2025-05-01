@@ -288,12 +288,20 @@ const FilmsManagement: React.FC = () => {
 
   const handleBulkApprove = async () => {
     try {
-      await Promise.all(
+      const results = await Promise.all(
         Array.from(selected_films).map(id => 
           filmService.updateFilmStatus(id, 'approved', undefined)
         )
       );
-      await fetchFilms(); // Refresh the films list to get latest versions
+      
+      // Update the films list with all updated films
+      setFilms(prevFilms => 
+        prevFilms.map(film => {
+          const updatedFilm = results.find(r => r.id === film.id);
+          return updatedFilm ? { ...film, ...updatedFilm } : film;
+        })
+      );
+      
       setSelectedFilms(new Set());
       toast.success('Selected films approved successfully');
     } catch (error) {
@@ -309,12 +317,20 @@ const FilmsManagement: React.FC = () => {
 
   const handleBulkReject = async () => {
     try {
-      await Promise.all(
+      const results = await Promise.all(
         Array.from(selected_films).map(id => 
           filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin')
         )
       );
-      await fetchFilms(); // Refresh the films list to get latest versions
+      
+      // Update the films list with all updated films
+      setFilms(prevFilms => 
+        prevFilms.map(film => {
+          const updatedFilm = results.find(r => r.id === film.id);
+          return updatedFilm ? { ...film, ...updatedFilm } : film;
+        })
+      );
+      
       setSelectedFilms(new Set());
       toast.success('Selected films rejected successfully');
     } catch (error) {
@@ -345,8 +361,15 @@ const FilmsManagement: React.FC = () => {
   const handleApprove = async (id: string) => {
     try {
       console.log('Attempting to approve film:', id);
-      await filmService.updateFilmStatus(id, 'approved', undefined);
-      await fetchFilms(); // Refresh the films list
+      const updatedFilm = await filmService.updateFilmStatus(id, 'approved', undefined);
+      
+      // Update the films list with the updated film
+      setFilms(prevFilms => 
+        prevFilms.map(film => 
+          film.id === id ? { ...film, ...updatedFilm } : film
+        )
+      );
+      
       toast.success('Film approved successfully');
     } catch (error) {
       console.error('Error approving film:', error);
@@ -361,8 +384,15 @@ const FilmsManagement: React.FC = () => {
   const handleReject = async (id: string) => {
     try {
       console.log('Attempting to reject film:', id);
-      await filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin');
-      await fetchFilms(); // Refresh the films list
+      const updatedFilm = await filmService.updateFilmStatus(id, 'rejected', 'Rejected by admin');
+      
+      // Update the films list with the updated film
+      setFilms(prevFilms => 
+        prevFilms.map(film => 
+          film.id === id ? { ...film, ...updatedFilm } : film
+        )
+      );
+      
       toast.success('Film rejected successfully');
     } catch (error) {
       console.error('Error rejecting film:', error);
