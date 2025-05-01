@@ -3,11 +3,17 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { Film } from '../../types';
+import { CheckIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 const FilmmakerDashboard = () => {
   const { user } = useAuth();
   const [films, setFilms] = useState<Film[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Separate films by status
+  const approvedFilms = films.filter(film => film.status === 'approved');
+  const pendingFilms = films.filter(film => film.status === 'pending');
+  const rejectedFilms = films.filter(film => film.status === 'rejected');
 
   useEffect(() => {
     const fetchFilms = async () => {
@@ -101,6 +107,103 @@ const FilmmakerDashboard = () => {
     }
   }, [user?.email]);
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <CheckIcon className="h-3 w-3 mr-1" />
+            Approved
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            <XCircleIcon className="h-3 w-3 mr-1" />
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <ClockIcon className="h-3 w-3 mr-1" />
+            Pending
+          </span>
+        );
+    }
+  };
+
+  const FilmTable = ({ films, title }: { films: Film[], title: string }) => (
+    <div className="mt-8">
+      <h3 className="text-lg font-medium text-gray-900 mb-4">{title}</h3>
+      {films.length === 0 ? (
+        <div className="text-center py-6 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-500">No {title.toLowerCase()} films</p>
+        </div>
+      ) : (
+        <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Views
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Revenue
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Upload Date
+                </th>
+                {title === 'Approved Films' && (
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {films.map((film) => (
+                <tr key={film.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{film.title}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(film.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {film.views}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    ${film.revenue?.toFixed(2)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(film.upload_date).toLocaleDateString()}
+                  </td>
+                  {title === 'Approved Films' && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <Link
+                        to={`/watch/${film.id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Watch Film
+                      </Link>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="md:flex md:items-center md:justify-between">
@@ -119,83 +222,37 @@ const FilmmakerDashboard = () => {
         </div>
       </div>
 
-      <div className="mt-8">
-        {isLoading ? (
-          <div className="text-center">Loading...</div>
-        ) : films.length === 0 ? (
-          <div className="text-center py-12">
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No films</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Get started by uploading your first film.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/filmmaker/upload"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Upload Film
-              </Link>
-            </div>
+      {isLoading ? (
+        <div className="text-center py-12">Loading...</div>
+      ) : films.length === 0 ? (
+        <div className="text-center py-12">
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No films</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Get started by uploading your first film.
+          </p>
+          <div className="mt-6">
+            <Link
+              to="/filmmaker/upload"
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Upload Film
+            </Link>
           </div>
-        ) : (
-          <div className="flex flex-col">
-            <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-              <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Title
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Views
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Revenue
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Upload Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {films.map((film) => (
-                        <tr key={film.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{film.title}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              film.status === 'approved' ? 'bg-green-100 text-green-800' :
-                              film.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {film.status.charAt(0).toUpperCase() + film.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {film.views}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${film.revenue?.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(film.upload_date).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Approved Films Section */}
+          <FilmTable films={approvedFilms} title="Approved Films" />
+
+          {/* Pending Films Section */}
+          <FilmTable films={pendingFilms} title="Pending Films" />
+
+          {/* Rejected Films Section */}
+          {rejectedFilms.length > 0 && (
+            <FilmTable films={rejectedFilms} title="Rejected Films" />
+          )}
+        </div>
+      )}
     </div>
   );
 };
