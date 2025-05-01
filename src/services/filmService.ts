@@ -123,7 +123,7 @@ export const filmService = {
           last_action: {
             type: status === 'approved' ? 'approve' : 'reject',
             date: new Date().toISOString(),
-            admin: profile.email // Add admin email to last_action
+            admin: profile.email
           }
         })
         .eq('id', id);
@@ -134,18 +134,17 @@ export const filmService = {
       }
 
       // Then fetch the updated film
-      const { data: updatedFilm, error: fetchError } = await supabase
+      const { data: updatedFilms, error: fetchError } = await supabase
         .from('films')
         .select('*')
-        .eq('id', id)
-        .maybeSingle();
+        .eq('id', id);
 
       if (fetchError) {
         console.error('Error fetching updated film:', fetchError);
         throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
       }
 
-      if (!updatedFilm) {
+      if (!updatedFilms || updatedFilms.length === 0) {
         console.error('No film returned after update:', { id });
         // Even if we can't fetch the updated film, the update might have succeeded
         // Return the original film with the new status
@@ -160,6 +159,14 @@ export const filmService = {
           }
         };
       }
+
+      const updatedFilm = updatedFilms[0];
+      console.log('Film status updated successfully:', {
+        id: updatedFilm.id,
+        title: updatedFilm.title,
+        status: updatedFilm.status,
+        last_action: updatedFilm.last_action
+      });
 
       return updatedFilm;
     } catch (error) {
