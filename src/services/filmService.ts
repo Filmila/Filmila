@@ -172,7 +172,6 @@ export const filmService = {
         .update({
           status: status,
           rejection_note: rejection_note || null,
-          updated_at: new Date().toISOString(),
           last_action: {
             type: status === 'approved' ? 'approve' : 'reject',
             date: new Date().toISOString(),
@@ -180,6 +179,7 @@ export const filmService = {
           }
         })
         .eq('id', id)
+        .eq('version', existingFilm.version)
         .select()
         .single();
 
@@ -188,8 +188,14 @@ export const filmService = {
           error: updateError,
           user_id: user.id,
           film_id: id,
-          role: userRole
+          role: userRole,
+          version: existingFilm.version
         });
+        
+        if (updateError.code === 'PGRST116') {
+          throw new Error('Film was updated by another user. Please refresh and try again.');
+        }
+        
         throw updateError;
       }
 
@@ -197,7 +203,8 @@ export const filmService = {
         console.error('No film returned after update:', { 
           id,
           user_id: user.id,
-          role: userRole
+          role: userRole,
+          version: existingFilm.version
         });
         throw new Error('Failed to update film');
       }
@@ -208,6 +215,7 @@ export const filmService = {
         status: updatedFilm.status,
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
+        version: updatedFilm.version,
         user_id: user.id,
         role: userRole
       });
@@ -218,6 +226,7 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
+          version: updatedFilm.version,
           user_id: user.id,
           role: userRole
         });
