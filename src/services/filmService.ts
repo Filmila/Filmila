@@ -201,7 +201,7 @@ export const filmService = {
         .from('films')
         .update({
           status: status,
-          rejection_note: rejection_note,
+          rejection_note: rejection_note || null,
           video_url: videoUrl,
           updated_at: new Date().toISOString(),
           last_action: {
@@ -211,7 +211,7 @@ export const filmService = {
           }
         })
         .eq('id', id)
-        .select()
+        .select('id, title, filmmaker, description, price, views, revenue, status, rejection_note, upload_date, video_url, last_action, thumbnail_url, version, updated_at')
         .single();
 
       if (updateError) {
@@ -243,7 +243,7 @@ export const filmService = {
       // Then fetch the updated film with a fresh query
       const { data: updatedFilms, error: fetchError } = await supabase
         .from('films')
-        .select('*')
+        .select('id, title, filmmaker, description, price, views, revenue, status, rejection_note, upload_date, video_url, last_action, thumbnail_url, version, updated_at')
         .eq('id', id);
 
       if (fetchError) {
