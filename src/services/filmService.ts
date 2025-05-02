@@ -88,11 +88,13 @@ export const filmService = {
         throw new Error('No active session');
       }
 
-      const userRole = session.user.user_metadata.role;
-      console.log('User role from session:', {
+      // Get the role from the JWT token
+      const userRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1])).role : null;
+      console.log('User role from JWT:', {
         role: userRole,
         email: user.email,
-        user_id: user.id
+        user_id: user.id,
+        token: session.access_token ? 'present' : 'missing'
       });
 
       if (userRole !== 'ADMIN') {
@@ -162,7 +164,8 @@ export const filmService = {
         console.error('Error updating film:', {
           error: updateError,
           user_id: user.id,
-          film_id: id
+          film_id: id,
+          role: userRole
         });
         throw updateError;
       }
@@ -170,7 +173,8 @@ export const filmService = {
       if (!updatedFilm) {
         console.error('No film returned after update:', { 
           id,
-          user_id: user.id
+          user_id: user.id,
+          role: userRole
         });
         throw new Error('Failed to update film');
       }
@@ -181,7 +185,8 @@ export const filmService = {
         status: updatedFilm.status,
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
-        user_id: user.id
+        user_id: user.id,
+        role: userRole
       });
 
       // Verify the status was actually updated
@@ -190,7 +195,8 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
-          user_id: user.id
+          user_id: user.id,
+          role: userRole
         });
         throw new Error('Film status was not updated correctly');
       }
