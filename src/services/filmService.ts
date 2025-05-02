@@ -58,9 +58,9 @@ export const filmService = {
     return data;
   },
 
-  async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
+  async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string, retryCount = 0): Promise<Film> {
     try {
-      console.log('Updating film status:', { id, status, rejection_note });
+      console.log('Updating film status:', { id, status, rejection_note, retryCount });
 
       // First verify the user is an admin
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -189,11 +189,21 @@ export const filmService = {
           user_id: user.id,
           film_id: id,
           role: userRole,
-          version: existingFilm.version
+          version: existingFilm.version,
+          retryCount
         });
         
+        // Handle version conflict with retry logic
+        if (updateError.code === 'PGRST116' && retryCount < 3) {
+          console.log('Version conflict detected, retrying update...');
+          // Wait a short time before retrying
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // Retry the update with incremented retry count
+          return this.updateFilmStatus(id, status, rejection_note, retryCount + 1);
+        }
+        
         if (updateError.code === 'PGRST116') {
-          throw new Error('Film was updated by another user. Please refresh and try again.');
+          throw new Error('The film was updated by another user. Please refresh the page and try again.');
         }
         
         throw updateError;
@@ -204,7 +214,8 @@ export const filmService = {
           id,
           user_id: user.id,
           role: userRole,
-          version: existingFilm.version
+          version: existingFilm.version,
+          retryCount
         });
         throw new Error('Failed to update film');
       }
@@ -217,7 +228,8 @@ export const filmService = {
         updated_at: updatedFilm.updated_at,
         version: updatedFilm.version,
         user_id: user.id,
-        role: userRole
+        role: userRole,
+        retryCount
       });
 
       // Verify the status was actually updated
@@ -228,7 +240,8 @@ export const filmService = {
           updated_at: updatedFilm.updated_at,
           version: updatedFilm.version,
           user_id: user.id,
-          role: userRole
+          role: userRole,
+          retryCount
         });
         throw new Error('Film status was not updated correctly');
       }
