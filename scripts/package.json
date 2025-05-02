@@ -1,0 +1,14 @@
+{
+  "name": "filmila-admin-scripts",
+  "version": "1.0.0",
+  "description": "Admin scripts for Filmila",
+  "scripts": {
+    "set-admin": "ts-node setAdminRole.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  }
+} 
