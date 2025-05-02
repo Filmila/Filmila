@@ -63,21 +63,22 @@ export const filmService = {
       console.log('Updating film status:', { id, status, rejection_note });
 
       // First verify the user is an admin
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role, email');
+        .select('role, email')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
 
       if (profileError) {
         console.error('Error checking user role:', profileError);
         throw new Error('Failed to verify user permissions');
       }
 
-      if (!profiles || profiles.length === 0) {
+      if (!profile) {
         console.error('No profile found for user');
         throw new Error('User profile not found');
       }
 
-      const profile = profiles[0];
       const normalizedRole = profile.role.toLowerCase();
       console.log('User role check:', { 
         original: profile.role, 
