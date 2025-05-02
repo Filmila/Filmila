@@ -63,10 +63,28 @@ export const filmService = {
       console.log('Updating film status:', { id, status, rejection_note });
 
       // First verify the user is an admin
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Error getting user:', authError);
+        throw new Error('Failed to get authenticated user');
+      }
+
+      if (!user) {
+        console.error('No authenticated user found');
+        throw new Error('User not authenticated');
+      }
+
+      console.log('Authenticated user:', {
+        id: user.id,
+        email: user.email,
+        role: user.role
+      });
+
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, email')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('id', user.id)
         .single();
 
       if (profileError) {
@@ -75,7 +93,7 @@ export const filmService = {
       }
 
       if (!profile) {
-        console.error('No profile found for user');
+        console.error('No profile found for user:', user.id);
         throw new Error('User profile not found');
       }
 
@@ -83,14 +101,16 @@ export const filmService = {
       console.log('User role check:', { 
         original: profile.role, 
         normalized: normalizedRole,
-        email: profile.email 
+        email: profile.email,
+        user_id: user.id
       });
 
       if (normalizedRole !== 'admin') {
         console.error('User is not an admin:', { 
           role: profile.role,
           normalized: normalizedRole,
-          email: profile.email 
+          email: profile.email,
+          user_id: user.id
         });
         throw new Error('Only admins can update film status');
       }
@@ -110,10 +130,14 @@ export const filmService = {
       }
 
       if (!existingFilm) {
+        console.error('Film not found:', { id, user_id: user.id });
         throw new Error(`Film with ID ${id} not found`);
       }
 
-      console.log('Current film data:', existingFilm);
+      console.log('Current film data:', {
+        ...existingFilm,
+        user_id: user.id
+      });
 
       // Clean up the video URL if it contains test code
       let videoUrl = existingFilm.video_url;
@@ -143,7 +167,10 @@ export const filmService = {
         }
       };
 
-      console.log('Attempting update with data:', updateData);
+      console.log('Attempting update with data:', {
+        ...updateData,
+        user_id: user.id
+      });
 
       // First verify the film exists and is in the correct state
       const { data: preUpdateFilm, error: preUpdateError } = await supabase
@@ -158,13 +185,15 @@ export const filmService = {
       }
 
       if (!preUpdateFilm) {
+        console.error('Film not found before update:', { id, user_id: user.id });
         throw new Error(`Film with ID ${id} not found`);
       }
 
       console.log('Pre-update film state:', {
         id: preUpdateFilm.id,
         status: preUpdateFilm.status,
-        updated_at: preUpdateFilm.updated_at
+        updated_at: preUpdateFilm.updated_at,
+        user_id: user.id
       });
 
       // Try a direct update with all fields
@@ -184,7 +213,11 @@ export const filmService = {
         .eq('id', id);
 
       if (updateError) {
-        console.error('Error updating film:', updateError);
+        console.error('Error updating film:', {
+          error: updateError,
+          user_id: user.id,
+          film_id: id
+        });
         throw updateError;
       }
 
@@ -198,12 +231,19 @@ export const filmService = {
         .eq('id', id);
 
       if (fetchError) {
-        console.error('Error fetching updated film:', fetchError);
+        console.error('Error fetching updated film:', {
+          error: fetchError,
+          user_id: user.id,
+          film_id: id
+        });
         throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
       }
 
       if (!updatedFilms || updatedFilms.length === 0) {
-        console.error('No film returned after update:', { id });
+        console.error('No film returned after update:', { 
+          id,
+          user_id: user.id
+        });
         // Even if we can't fetch the updated film, the update might have succeeded
         // Return the original film with the new status
         return {
@@ -226,7 +266,8 @@ export const filmService = {
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
         original_updated_at: existingFilm.updated_at,
-        pre_update_status: preUpdateFilm.status
+        pre_update_status: preUpdateFilm.status,
+        user_id: user.id
       });
 
       // Verify the status was actually updated
@@ -235,7 +276,8 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
-          pre_update_status: preUpdateFilm.status
+          pre_update_status: preUpdateFilm.status,
+          user_id: user.id
         });
         throw new Error('Film status was not updated correctly');
       }
