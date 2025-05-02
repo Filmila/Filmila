@@ -75,11 +75,34 @@ export const filmService = {
         throw new Error('User not authenticated');
       }
 
-      console.log('Authenticated user:', {
-        id: user.id,
+      // Get the session to check the role
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        throw new Error('Failed to get session');
+      }
+
+      if (!session) {
+        console.error('No session found');
+        throw new Error('No active session');
+      }
+
+      const userRole = session.user.user_metadata.role;
+      console.log('User role from session:', {
+        role: userRole,
         email: user.email,
-        role: user.role
+        user_id: user.id
       });
+
+      if (userRole !== 'ADMIN') {
+        console.error('User is not an admin:', {
+          role: userRole,
+          email: user.email,
+          user_id: user.id
+        });
+        throw new Error('Only admins can update film status');
+      }
 
       // First verify the film exists and get its current data
       const { data: existingFilm, error: checkError } = await supabase
