@@ -88,14 +88,26 @@ export const filmService = {
         throw new Error('No active session');
       }
 
+      // Debug JWT contents
+      const jwtPayload = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1])) : null;
+      console.log('JWT Debug:', {
+        payload: jwtPayload,
+        app_metadata: session.user.app_metadata,
+        user_metadata: session.user.user_metadata,
+        email: user.email,
+        user_id: user.id
+      });
+
       // Get the role from both JWT token and user metadata
-      const jwtRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1])).role : null;
+      const jwtRole = jwtPayload?.role;
       const metadataRole = session.user.user_metadata.role;
-      const userRole = jwtRole || metadataRole;
+      const appMetadataRole = session.user.app_metadata.role;
+      const userRole = jwtRole || metadataRole || appMetadataRole;
 
       console.log('User role check:', {
         jwtRole,
         metadataRole,
+        appMetadataRole,
         finalRole: userRole,
         email: user.email,
         user_id: user.id,
@@ -107,6 +119,7 @@ export const filmService = {
         console.error('User is not an admin:', {
           jwtRole,
           metadataRole,
+          appMetadataRole,
           finalRole: userRole,
           email: user.email,
           user_id: user.id
