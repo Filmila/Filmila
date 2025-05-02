@@ -88,18 +88,26 @@ export const filmService = {
         throw new Error('No active session');
       }
 
-      // Get the role from the JWT token
-      const userRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1])).role : null;
-      console.log('User role from JWT:', {
-        role: userRole,
+      // Get the role from both JWT token and user metadata
+      const jwtRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1])).role : null;
+      const metadataRole = session.user.user_metadata.role;
+      const userRole = jwtRole || metadataRole;
+
+      console.log('User role check:', {
+        jwtRole,
+        metadataRole,
+        finalRole: userRole,
         email: user.email,
         user_id: user.id,
         token: session.access_token ? 'present' : 'missing'
       });
 
-      if (userRole !== 'ADMIN') {
+      // Check for admin role in a case-insensitive way
+      if (!userRole || userRole.toLowerCase() !== 'admin') {
         console.error('User is not an admin:', {
-          role: userRole,
+          jwtRole,
+          metadataRole,
+          finalRole: userRole,
           email: user.email,
           user_id: user.id
         });
