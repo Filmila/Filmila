@@ -197,7 +197,7 @@ export const filmService = {
       });
 
       // Try a direct update with all fields
-      const { error: updateError } = await supabase
+      const { data: updateResult, error: updateError } = await supabase
         .from('films')
         .update({
           status: status,
@@ -210,7 +210,9 @@ export const filmService = {
             admin: profile.email
           }
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', {
@@ -220,6 +222,20 @@ export const filmService = {
         });
         throw updateError;
       }
+
+      if (!updateResult) {
+        console.error('Update operation did not return any data:', {
+          user_id: user.id,
+          film_id: id,
+          status
+        });
+        throw new Error('Update operation did not return any data');
+      }
+
+      console.log('Update result:', {
+        ...updateResult,
+        user_id: user.id
+      });
 
       // Wait a short moment to ensure the update is processed
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -267,7 +283,8 @@ export const filmService = {
         updated_at: updatedFilm.updated_at,
         original_updated_at: existingFilm.updated_at,
         pre_update_status: preUpdateFilm.status,
-        user_id: user.id
+        user_id: user.id,
+        update_result: updateResult
       });
 
       // Verify the status was actually updated
@@ -277,7 +294,8 @@ export const filmService = {
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
           pre_update_status: preUpdateFilm.status,
-          user_id: user.id
+          user_id: user.id,
+          update_result: updateResult
         });
         throw new Error('Film status was not updated correctly');
       }
