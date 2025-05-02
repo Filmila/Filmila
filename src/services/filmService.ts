@@ -75,7 +75,7 @@ export const filmService = {
         throw new Error('User not authenticated');
       }
 
-      // Get the session to check the role
+      // Get the session to check the role - only get it once and reuse
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -179,7 +179,6 @@ export const filmService = {
           }
         })
         .eq('id', id)
-        .eq('version', existingFilm.version)
         .select()
         .single();
 
@@ -189,7 +188,6 @@ export const filmService = {
           user_id: user.id,
           film_id: id,
           role: userRole,
-          version: existingFilm.version,
           retryCount
         });
         
@@ -197,7 +195,7 @@ export const filmService = {
         if (updateError.code === 'PGRST116' && retryCount < 3) {
           console.log('Version conflict detected, retrying update...');
           // Wait a short time before retrying
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Exponential backoff
           // Retry the update with incremented retry count
           return this.updateFilmStatus(id, status, rejection_note, retryCount + 1);
         }
@@ -214,7 +212,6 @@ export const filmService = {
           id,
           user_id: user.id,
           role: userRole,
-          version: existingFilm.version,
           retryCount
         });
         throw new Error('Failed to update film');

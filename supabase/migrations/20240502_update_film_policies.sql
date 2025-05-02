@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION handle_film_update()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Increment version
-  NEW.version = OLD.version + 1;
+  NEW.version = COALESCE(OLD.version, 0) + 1;
   -- Set updated_at timestamp
   NEW.updated_at = NOW();
   RETURN NEW;
