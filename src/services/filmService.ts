@@ -81,48 +81,12 @@ export const filmService = {
         role: user.role
       });
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role, email')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error checking user role:', profileError);
-        throw new Error('Failed to verify user permissions');
-      }
-
-      if (!profile) {
-        console.error('No profile found for user:', user.id);
-        throw new Error('User profile not found');
-      }
-
-      const normalizedRole = profile.role.toLowerCase();
-      console.log('User role check:', { 
-        original: profile.role, 
-        normalized: normalizedRole,
-        email: profile.email,
-        user_id: user.id
-      });
-
-      if (normalizedRole !== 'admin') {
-        console.error('User is not an admin:', { 
-          role: profile.role,
-          normalized: normalizedRole,
-          email: profile.email,
-          user_id: user.id
-        });
-        throw new Error('Only admins can update film status');
-      }
-
-      console.log('User is admin, proceeding with update');
-
       // First verify the film exists and get its current data
       const { data: existingFilm, error: checkError } = await supabase
         .from('films')
         .select('*')
         .eq('id', id)
-        .maybeSingle();
+        .single();
 
       if (checkError) {
         console.error('Error checking film existence:', checkError);
@@ -154,63 +118,22 @@ export const filmService = {
 
       console.log('Cleaned video URL:', videoUrl);
 
-      // Prepare the update data
-      const updateData = { 
-        status, 
-        rejection_note,
-        video_url: videoUrl,
-        updated_at: new Date().toISOString(),
-        last_action: {
-          type: status === 'approved' ? 'approve' : 'reject',
-          date: new Date().toISOString(),
-          admin: profile.email
-        }
-      };
-
-      console.log('Attempting update with data:', {
-        ...updateData,
-        user_id: user.id
-      });
-
-      // First verify the film exists and is in the correct state
-      const { data: preUpdateFilm, error: preUpdateError } = await supabase
-        .from('films')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (preUpdateError) {
-        console.error('Error checking pre-update film state:', preUpdateError);
-        throw new Error('Failed to verify film state before update');
-      }
-
-      if (!preUpdateFilm) {
-        console.error('Film not found before update:', { id, user_id: user.id });
-        throw new Error(`Film with ID ${id} not found`);
-      }
-
-      console.log('Pre-update film state:', {
-        id: preUpdateFilm.id,
-        status: preUpdateFilm.status,
-        updated_at: preUpdateFilm.updated_at,
-        user_id: user.id
-      });
-
-      // Try a direct update with all fields
-      const { error: updateError } = await supabase
+      // Try a direct update with minimal fields
+      const { data: updatedFilm, error: updateError } = await supabase
         .from('films')
         .update({
           status: status,
           rejection_note: rejection_note || null,
-          video_url: videoUrl,
           updated_at: new Date().toISOString(),
           last_action: {
             type: status === 'approved' ? 'approve' : 'reject',
             date: new Date().toISOString(),
-            admin: profile.email
+            admin: user.email
           }
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating film:', {
@@ -221,52 +144,20 @@ export const filmService = {
         throw updateError;
       }
 
-      // Wait a short moment to ensure the update is processed
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Then fetch the updated film with a fresh query
-      const { data: updatedFilms, error: fetchError } = await supabase
-        .from('films')
-        .select('*')
-        .eq('id', id);
-
-      if (fetchError) {
-        console.error('Error fetching updated film:', {
-          error: fetchError,
-          user_id: user.id,
-          film_id: id
-        });
-        throw new Error(`Failed to fetch updated film: ${fetchError.message}`);
-      }
-
-      if (!updatedFilms || updatedFilms.length === 0) {
+      if (!updatedFilm) {
         console.error('No film returned after update:', { 
           id,
           user_id: user.id
         });
-        // Even if we can't fetch the updated film, the update might have succeeded
-        // Return the original film with the new status
-        return {
-          ...existingFilm,
-          status: status,
-          updated_at: new Date().toISOString(),
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString(),
-            admin: profile.email
-          }
-        };
+        throw new Error('Failed to update film');
       }
 
-      const updatedFilm = updatedFilms[0];
       console.log('Post-update film state:', {
         id: updatedFilm.id,
         title: updatedFilm.title,
         status: updatedFilm.status,
         last_action: updatedFilm.last_action,
         updated_at: updatedFilm.updated_at,
-        original_updated_at: existingFilm.updated_at,
-        pre_update_status: preUpdateFilm.status,
         user_id: user.id
       });
 
@@ -276,7 +167,6 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           updated_at: updatedFilm.updated_at,
-          pre_update_status: preUpdateFilm.status,
           user_id: user.id
         });
         throw new Error('Film status was not updated correctly');
