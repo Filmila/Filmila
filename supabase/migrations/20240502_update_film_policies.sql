@@ -29,25 +29,10 @@ WITH CHECK (
   AND status = 'pending'
 );
 
--- Add version column if it doesn't exist
+-- Remove version column if it exists
 ALTER TABLE films
-ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1;
+DROP COLUMN IF EXISTS version;
 
--- Create a function to handle version updates
-CREATE OR REPLACE FUNCTION handle_film_update()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Increment version
-  NEW.version = COALESCE(OLD.version, 0) + 1;
-  -- Set updated_at timestamp
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger for version updates
+-- Drop version-related triggers and functions
 DROP TRIGGER IF EXISTS film_version_trigger ON films;
-CREATE TRIGGER film_version_trigger
-  BEFORE UPDATE ON films
-  FOR EACH ROW
-  EXECUTE FUNCTION handle_film_update(); 
+DROP FUNCTION IF EXISTS handle_film_update(); 
