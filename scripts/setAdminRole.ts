@@ -24,14 +24,15 @@ async function setAdminRole(email: string) {
   try {
     console.log(`Setting admin role for user: ${email}`);
 
-    // First, get the user
-    const { data: user, error: userError } = await supabase.auth.admin.getUserByEmail(email);
+    // First, get the user by email
+    const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
     
     if (userError) {
-      console.error('Error getting user:', userError);
+      console.error('Error getting users:', userError);
       return;
     }
 
+    const user = users.find(u => u.email === email);
     if (!user) {
       console.error('User not found');
       return;
@@ -45,7 +46,7 @@ async function setAdminRole(email: string) {
     });
 
     // Update the user's app_metadata
-    const { data: updatedUser, error: updateError } = await supabase.auth.admin.updateUserById(
+    const { data, error: updateError } = await supabase.auth.admin.updateUserById(
       user.id,
       {
         app_metadata: {
@@ -61,10 +62,10 @@ async function setAdminRole(email: string) {
     }
 
     console.log('User updated successfully:', {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      app_metadata: updatedUser.app_metadata,
-      user_metadata: updatedUser.user_metadata
+      id: data.user.id,
+      email: data.user.email,
+      app_metadata: data.user.app_metadata,
+      user_metadata: data.user.user_metadata
     });
 
     console.log('\n✅ Admin role set successfully!');

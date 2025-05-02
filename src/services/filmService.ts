@@ -98,16 +98,18 @@ export const filmService = {
         user_id: user.id
       });
 
-      // Get the role from both JWT token and user metadata
+      // Get the role from app_metadata first, then fallback to other sources
+      const appMetadataRole = session.user.app_metadata?.role;
       const jwtRole = jwtPayload?.role;
-      const metadataRole = session.user.user_metadata.role;
-      const appMetadataRole = session.user.app_metadata.role;
-      const userRole = jwtRole || metadataRole || appMetadataRole;
+      const metadataRole = session.user.user_metadata?.role;
+      
+      // Prioritize app_metadata.role, then fallback to other sources
+      const userRole = appMetadataRole || jwtRole || metadataRole;
 
       console.log('User role check:', {
+        appMetadataRole,
         jwtRole,
         metadataRole,
-        appMetadataRole,
         finalRole: userRole,
         email: user.email,
         user_id: user.id,
@@ -117,14 +119,14 @@ export const filmService = {
       // Check for admin role in a case-insensitive way
       if (!userRole || userRole.toLowerCase() !== 'admin') {
         console.error('User is not an admin:', {
+          appMetadataRole,
           jwtRole,
           metadataRole,
-          appMetadataRole,
           finalRole: userRole,
           email: user.email,
           user_id: user.id
         });
-        throw new Error('Only admins can update film status');
+        throw new Error('Only admins can update film status. Please ensure you have the admin role in your app_metadata.');
       }
 
       // First verify the film exists and get its current data

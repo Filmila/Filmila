@@ -2,8 +2,9 @@
   "name": "filmila-admin-scripts",
   "version": "1.0.0",
   "description": "Admin scripts for Filmila",
+  "type": "commonjs",
   "scripts": {
-    "set-admin": "ts-node setAdminRole.ts"
+    "set-admin": "ts-node --transpile-only setAdminRole.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

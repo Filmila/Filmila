@@ -7,18 +7,10 @@ ON films
 FOR UPDATE
 TO public
 USING (
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = auth.uid()
-    AND LOWER(profiles.role) = 'admin'
-  )
+  LOWER(auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
 )
 WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.id = auth.uid()
-    AND LOWER(profiles.role) = 'admin'
-  )
+  LOWER(auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
 );
 
 -- Add policy for filmmakers to update their own films
