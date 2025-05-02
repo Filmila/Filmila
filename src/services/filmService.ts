@@ -167,39 +167,63 @@ export const filmService = {
       console.log('Cleaned video URL:', videoUrl);
 
       // Try a direct update with minimal fields
-      const { data: updatedFilm, error: updateError } = await supabase
+      const updateData = {
+        status: status,
+        rejection_note: rejection_note || null,
+        last_action: {
+          type: status === 'approved' ? 'approve' : 'reject',
+          date: new Date().toISOString(),
+          admin: user.email
+        },
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Attempting update with data:', {
+        id,
+        updateData,
+        user_id: user.id
+      });
+
+      const { error: updateError } = await supabase
         .from('films')
-        .update({
-          status: status,
-          rejection_note: rejection_note || null,
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString(),
-            admin: user.email
-          },
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
+        .update(updateData)
+        .eq('id', id);
 
       if (updateError) {
         console.error('Error updating film:', {
           error: updateError,
           user_id: user.id,
           film_id: id,
+          role: userRole,
+          updateData
+        });
+        throw new Error(`Failed to update film: ${updateError.message}`);
+      }
+
+      // Verify the update was successful by fetching the updated film
+      const { data: updatedFilm, error: fetchError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching updated film:', {
+          error: fetchError,
+          user_id: user.id,
+          film_id: id,
           role: userRole
         });
-        throw updateError;
+        throw new Error(`Failed to verify film update: ${fetchError.message}`);
       }
 
       if (!updatedFilm) {
-        console.error('No film returned after update:', { 
+        console.error('No film found after update:', { 
           id,
           user_id: user.id,
           role: userRole
         });
-        throw new Error('Failed to update film');
+        throw new Error(`Film with ID ${id} not found after update`);
       }
 
       console.log('Post-update film state:', {
