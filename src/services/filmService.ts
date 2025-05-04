@@ -170,18 +170,15 @@ export const filmService = {
         });
 
         // Perform the update with version check
-        const { data: updateResult, error: updateError } = await supabase
+        const { error: updateError } = await supabase
           .from('films')
           .update(updateData)
           .eq('id', id)
-          .eq('version', currentFilm.version)
-          .select('*')
-          .maybeSingle();
+          .eq('version', Number(currentFilm.version));
 
         console.log('Update result:', {
           success: !updateError,
           error: updateError,
-          result: updateResult,
           id,
           currentVersion: currentFilm.version,
           retryCount
@@ -212,49 +209,6 @@ export const filmService = {
             }
           }
           throw updateError;
-        }
-
-        // If no rows were updated, check RLS policies
-        if (!updateResult) {
-          console.error('No rows updated:', {
-            id,
-            currentVersion: currentFilm.version,
-            retryCount,
-            userRole,
-            userId: user.id,
-            updateData
-          });
-
-          // Check if we have the right permissions
-          const { data: policyCheck, error: policyError } = await supabase
-            .from('films')
-            .select('id')
-            .eq('id', id)
-            .maybeSingle();
-
-          console.log('RLS policy check:', {
-            canRead: !!policyCheck,
-            error: policyError,
-            id,
-            userRole,
-            userId: user.id
-          });
-
-          if (!policyCheck) {
-            throw new Error('Permission denied: Unable to update film. Please check your admin role.');
-          }
-
-          retryCount++;
-          if (retryCount < MAX_RETRIES) {
-            console.log('No rows updated, retrying...', {
-              id,
-              retryCount,
-              currentVersion: currentFilm.version
-            });
-            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
-            continue;
-          }
-          throw new Error('Failed to update film: No rows were affected');
         }
 
         // Verify the update was successful
