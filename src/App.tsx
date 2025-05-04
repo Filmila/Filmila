@@ -22,6 +22,7 @@ import ContinueWatching from './pages/viewer/ContinueWatching';
 import Watchlist from './pages/viewer/Watchlist';
 import Favorites from './pages/viewer/Favorites';
 import Contact from './pages/Contact';
+import About from './pages/About';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
             <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
             <Route path="/test-connection" element={<TestConnection />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
             
             {/* Admin Routes */}
             <Route path="/admin/*" element={
