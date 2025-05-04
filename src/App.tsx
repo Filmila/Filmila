@@ -23,6 +23,7 @@ import Watchlist from './pages/viewer/Watchlist';
 import Favorites from './pages/viewer/Favorites';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import WatchFilm from './pages/WatchFilm';
 
 function App() {
   return (
@@ -82,6 +83,9 @@ function App() {
                 </ViewerLayout>
               </ProtectedRoute>
             } />
+
+            {/* Watch Film Route */}
+            <Route path="/watch/:id" element={<WatchFilm />} />
 
             {/* Catch-all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
