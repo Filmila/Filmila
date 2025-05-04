@@ -160,7 +160,7 @@ export const filmService = {
         userId: user.id
       });
 
-      // Perform a direct update without any conditions
+      // Perform update matching only by id
       const { data: updateResult, error: updateError } = await supabase
         .from('films')
         .update(updateData)
