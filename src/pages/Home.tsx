@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Film } from '../types';
 import { supabase } from '../config/supabase';
 import { StarIcon, BookmarkIcon } from '@heroicons/react/24/outline';
@@ -8,6 +8,7 @@ import { PlayIcon } from '@heroicons/react/24/solid';
 const Home = () => {
   const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchFeaturedFilms = async () => {
@@ -77,19 +78,13 @@ const Home = () => {
             <p className="text-xl mb-8 text-purple-100">
               Join our community of passionate filmmakers and film enthusiasts
             </p>
-            <div className="flex justify-center space-x-4">
-              <Link
-                to="/browse"
-                className="bg-orange-600 text-white px-8 py-3 rounded-full hover:bg-orange-700 transition-colors"
+            <div className="flex justify-center">
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-white text-purple-600 px-8 py-3 rounded-full hover:bg-gray-100 transition-colors font-semibold text-lg shadow"
               >
-                Start Browsing
-              </Link>
-              <Link
-                to="/upload"
-                className="bg-white text-purple-600 px-8 py-3 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                Upload Your Film
-              </Link>
+                Get Started
+              </button>
             </div>
           </div>
         </div>
