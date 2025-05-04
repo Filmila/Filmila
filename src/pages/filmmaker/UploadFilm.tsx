@@ -83,6 +83,7 @@ const UploadFilm = () => {
       // Upload thumbnail
       const thumbKey = `films/${user?.email}/thumbnails/${Date.now()}-${selectedThumbnail.name}`;
       const thumbnailUrl = await uploadFileToS3(selectedThumbnail, thumbKey);
+      console.log('Upload results', { videoUrl, thumbnailUrl });
       // Create a new film object with thumbnail_url
       const newFilm: Omit<Film, 'id'> = {
         title: formData.title || '',
