@@ -59,47 +59,53 @@ export const filmService = {
   },
 
   async updateFilmStatus(id: string, status: Film['status'], rejection_note?: string): Promise<Film> {
-    const MAX_RETRIES = 3;
-    let retryCount = 0;
+    try {
+      console.log('Updating film status:', { id, status, rejection_note });
 
-    while (retryCount < MAX_RETRIES) {
-      try {
-        console.log(`Update attempt ${retryCount + 1}/${MAX_RETRIES}:`, { id, status, rejection_note });
+      // First verify the user is an admin
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Error getting user:', authError);
+        throw new Error('Failed to get authenticated user');
+      }
 
-        // First verify the user is an admin
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError) {
-          console.error('Error getting user:', authError);
-          throw new Error('Failed to get authenticated user');
-        }
+      if (!user) {
+        console.error('No authenticated user found');
+        throw new Error('User not authenticated');
+      }
 
-        if (!user) {
-          console.error('No authenticated user found');
-          throw new Error('User not authenticated');
-        }
+      // Get the session to check the role
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError);
+        throw new Error('Failed to get session');
+      }
 
-        // Get the session to check the role
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Error getting session:', sessionError);
-          throw new Error('Failed to get session');
-        }
+      if (!session) {
+        console.error('No session found');
+        throw new Error('No active session');
+      }
 
-        if (!session) {
-          console.error('No session found');
-          throw new Error('No active session');
-        }
+      // Get the role from app_metadata first, then fallback to other sources
+      const appMetadataRole = session.user.app_metadata?.role;
+      const jwtRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1]))?.role : null;
+      const metadataRole = session.user.user_metadata?.role;
+      
+      const userRole = appMetadataRole || jwtRole || metadataRole;
 
-        // Get the role from app_metadata first, then fallback to other sources
-        const appMetadataRole = session.user.app_metadata?.role;
-        const jwtRole = session.access_token ? JSON.parse(atob(session.access_token.split('.')[1]))?.role : null;
-        const metadataRole = session.user.user_metadata?.role;
-        
-        const userRole = appMetadataRole || jwtRole || metadataRole;
+      console.log('User role check:', {
+        appMetadataRole,
+        jwtRole,
+        metadataRole,
+        finalRole: userRole,
+        email: user.email,
+        user_id: user.id
+      });
 
-        console.log('User role check:', {
+      if (!userRole || userRole.toLowerCase() !== 'admin') {
+        console.error('User is not an admin:', {
           appMetadataRole,
           jwtRole,
           metadataRole,
@@ -107,193 +113,104 @@ export const filmService = {
           email: user.email,
           user_id: user.id
         });
-
-        if (!userRole || userRole.toLowerCase() !== 'admin') {
-          console.error('User is not an admin:', {
-            appMetadataRole,
-            jwtRole,
-            metadataRole,
-            finalRole: userRole,
-            email: user.email,
-            user_id: user.id
-          });
-          throw new Error('Only admins can update film status. Please ensure you have the admin role in your app_metadata.');
-        }
-
-        // Get current film data including version
-        const { data: currentFilm, error: fetchError } = await supabase
-          .from('films')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (fetchError) {
-          console.error('Error fetching current film:', {
-            error: fetchError,
-            id,
-            retryCount
-          });
-          throw new Error(`Failed to fetch film: ${fetchError.message}`);
-        }
-
-        if (!currentFilm) {
-          console.error('Film not found:', { id, retryCount });
-          throw new Error(`Film with ID ${id} not found`);
-        }
-
-        console.log('Current film state:', {
-          id: currentFilm.id,
-          version: currentFilm.version,
-          status: currentFilm.status,
-          updated_at: currentFilm.updated_at,
-          retryCount
-        });
-
-        const updateData = {
-          status: status,
-          rejection_note: rejection_note || null,
-          last_action: {
-            type: status === 'approved' ? 'approve' : 'reject',
-            date: new Date().toISOString(),
-            admin: user.email
-          },
-          updated_at: new Date().toISOString()
-        };
-
-        console.log('Attempting update:', {
-          id,
-          currentVersion: currentFilm.version,
-          updateData,
-          retryCount,
-          userRole,
-          userId: user.id
-        });
-
-        // Perform the update with version check
-        const { error: updateError } = await supabase
-          .from('films')
-          .update(updateData)
-          .eq('id', id)
-          .eq('version', Number(currentFilm.version));
-
-        console.log('Update result:', {
-          success: !updateError,
-          error: updateError,
-          id,
-          currentVersion: currentFilm.version,
-          retryCount
-        });
-
-        if (updateError) {
-          console.error('Error updating film:', {
-            error: updateError,
-            id,
-            currentVersion: currentFilm.version,
-            retryCount,
-            userRole,
-            userId: user.id
-          });
-          
-          // If it's a version conflict, retry
-          if (updateError.code === 'PGRST116') {
-            retryCount++;
-            if (retryCount < MAX_RETRIES) {
-              console.log('Version conflict, retrying...', {
-                id,
-                retryCount,
-                currentVersion: currentFilm.version
-              });
-              // Wait a bit before retrying
-              await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
-              continue;
-            }
-          }
-          throw updateError;
-        }
-
-        // Verify the update was successful
-        const { data: updatedFilm, error: verifyError } = await supabase
-          .from('films')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle();
-
-        if (verifyError) {
-          console.error('Error verifying update:', {
-            error: verifyError,
-            id,
-            retryCount,
-            userRole,
-            userId: user.id
-          });
-          throw new Error(`Failed to verify update: ${verifyError.message}`);
-        }
-
-        if (!updatedFilm) {
-          console.error('Film not found after update:', {
-            id,
-            retryCount,
-            userRole,
-            userId: user.id
-          });
-          throw new Error(`Film with ID ${id} not found after update`);
-        }
-
-        console.log('Update verification:', {
-          id: updatedFilm.id,
-          oldStatus: currentFilm.status,
-          newStatus: updatedFilm.status,
-          oldVersion: currentFilm.version,
-          newVersion: updatedFilm.version,
-          updated_at: updatedFilm.updated_at,
-          retryCount,
-          userRole,
-          userId: user.id
-        });
-
-        // Verify the status was actually updated
-        if (updatedFilm.status !== status) {
-          console.error('Status mismatch after update:', {
-            expected: status,
-            actual: updatedFilm.status,
-            oldVersion: currentFilm.version,
-            newVersion: updatedFilm.version,
-            updated_at: updatedFilm.updated_at,
-            retryCount,
-            userRole,
-            userId: user.id
-          });
-          
-          // If we haven't exceeded retries, try again
-          if (retryCount < MAX_RETRIES - 1) {
-            retryCount++;
-            console.log('Status mismatch, retrying...', {
-              id,
-              retryCount,
-              expected: status,
-              actual: updatedFilm.status,
-              userRole,
-              userId: user.id
-            });
-            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
-            continue;
-          }
-          
-          throw new Error('Film status was not updated correctly after multiple attempts');
-        }
-
-        return updatedFilm;
-      } catch (error) {
-        console.error(`Error in update attempt ${retryCount + 1}:`, error);
-        if (retryCount >= MAX_RETRIES - 1) {
-          throw error;
-        }
-        retryCount++;
-        await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+        throw new Error('Only admins can update film status. Please ensure you have the admin role in your app_metadata.');
       }
-    }
 
-    throw new Error(`Failed to update film status after ${MAX_RETRIES} attempts`);
+      // First verify the film exists
+      const { data: existingFilm, error: checkError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking film existence:', checkError);
+        throw new Error(`Film not found: ${checkError.message}`);
+      }
+
+      if (!existingFilm) {
+        console.error('Film not found:', { id, user_id: user.id });
+        throw new Error(`Film with ID ${id} not found`);
+      }
+
+      console.log('Current film state:', {
+        id: existingFilm.id,
+        status: existingFilm.status,
+        updated_at: existingFilm.updated_at
+      });
+
+      const updateData = {
+        status: status,
+        rejection_note: rejection_note || null,
+        last_action: {
+          type: status === 'approved' ? 'approve' : 'reject',
+          date: new Date().toISOString(),
+          admin: user.email
+        },
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Attempting update:', {
+        id,
+        updateData
+      });
+
+      // Perform the update without version check
+      const { error: updateError } = await supabase
+        .from('films')
+        .update(updateData)
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('Error updating film:', {
+          error: updateError,
+          id
+        });
+        throw new Error(`Failed to update film: ${updateError.message}`);
+      }
+
+      // Verify the update was successful
+      const { data: updatedFilm, error: verifyError } = await supabase
+        .from('films')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (verifyError) {
+        console.error('Error verifying update:', {
+          error: verifyError,
+          id
+        });
+        throw new Error(`Failed to verify update: ${verifyError.message}`);
+      }
+
+      if (!updatedFilm) {
+        console.error('Film not found after update:', { id });
+        throw new Error(`Film with ID ${id} not found after update`);
+      }
+
+      console.log('Update verification:', {
+        id: updatedFilm.id,
+        oldStatus: existingFilm.status,
+        newStatus: updatedFilm.status,
+        updated_at: updatedFilm.updated_at
+      });
+
+      // Verify the status was actually updated
+      if (updatedFilm.status !== status) {
+        console.error('Status mismatch after update:', {
+          expected: status,
+          actual: updatedFilm.status,
+          updated_at: updatedFilm.updated_at
+        });
+        throw new Error('Film status was not updated correctly');
+      }
+
+      return updatedFilm;
+    } catch (error) {
+      console.error('Error in updateFilmStatus:', error);
+      throw error;
+    }
   },
 
   async deleteFilm(id: string): Promise<void> {
