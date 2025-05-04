@@ -35,7 +35,7 @@ const Navbar = () => {
                 Ratings
               </Link>
               <Link to="/about" className="text-gray-600 hover:text-purple-600">
-                About Us
+                About
               </Link>
               <Link to="/contact" className="text-gray-600 hover:text-purple-600">
                 Contact
