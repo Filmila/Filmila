@@ -21,6 +21,7 @@ import MyFilms from './pages/viewer/MyFilms';
 import ContinueWatching from './pages/viewer/ContinueWatching';
 import Watchlist from './pages/viewer/Watchlist';
 import Favorites from './pages/viewer/Favorites';
+import Contact from './pages/Contact';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/register/filmmaker" element={<Register defaultRole="FILMMAKER" />} />
             <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
             <Route path="/test-connection" element={<TestConnection />} />
+            <Route path="/contact" element={<Contact />} />
             
             {/* Admin Routes */}
             <Route path="/admin/*" element={
