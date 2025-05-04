@@ -15,6 +15,7 @@ const UploadFilm = () => {
     price: 0,
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedThumbnail, setSelectedThumbnail] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,33 +45,45 @@ const UploadFilm = () => {
     }
   };
 
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload a valid image file for the thumbnail');
+        return;
+      }
+      // Validate file size (e.g., 5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Thumbnail size should be less than 5MB');
+        return;
+      }
+      setSelectedThumbnail(file);
+      setError(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
       setError('Please select a video file');
       return;
     }
-
+    if (!selectedThumbnail) {
+      setError('Please select a thumbnail image');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // Generate a unique key for the file
+      // Upload video
       const fileKey = `films/${user?.email}/${Date.now()}-${selectedFile.name}`;
-      
-      console.log('Starting upload to S3...');
-      console.log('File details:', {
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-        key: fileKey
-      });
-
-      // Upload file to S3
       const videoUrl = await uploadFileToS3(selectedFile, fileKey);
-      console.log('Upload successful. Video URL:', videoUrl);
-      
-      // Create a new film object with all required fields
+      // Upload thumbnail
+      const thumbKey = `films/${user?.email}/thumbnails/${Date.now()}-${selectedThumbnail.name}`;
+      const thumbnailUrl = await uploadFileToS3(selectedThumbnail, thumbKey);
+      // Create a new film object with thumbnail_url
       const newFilm: Omit<Film, 'id'> = {
         title: formData.title || '',
         filmmaker: user?.email || 'Unknown Filmmaker',
@@ -81,13 +94,10 @@ const UploadFilm = () => {
         status: 'pending',
         upload_date: new Date().toISOString(),
         video_url: videoUrl,
-        version: 1 // Initialize version as 1 for new films
+        thumbnail_url: thumbnailUrl,
+        version: 1
       };
-
-      // Store film in database
       await filmService.createFilm(newFilm);
-      
-      // Navigate to the dashboard
       navigate('/dashboard');
     } catch (err) {
       console.error('Upload error details:', err);
@@ -174,6 +184,30 @@ const UploadFilm = () => {
           {selectedFile && (
             <p className="mt-2 text-sm text-gray-500">
               Selected file: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700">
+            Thumbnail Image
+          </label>
+          <input
+            type="file"
+            id="thumbnail"
+            onChange={handleThumbnailChange}
+            accept="image/*"
+            required
+            className="mt-1 block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-md file:border-0
+              file:text-sm file:font-semibold
+              file:bg-indigo-50 file:text-indigo-700
+              hover:file:bg-indigo-100"
+          />
+          {selectedThumbnail && (
+            <p className="mt-2 text-sm text-gray-500">
+              Selected thumbnail: {selectedThumbnail.name} ({(selectedThumbnail.size / (1024 * 1024)).toFixed(2)} MB)
             </p>
           )}
         </div>
