@@ -164,22 +164,37 @@ export const filmService = {
           id,
           currentVersion: currentFilm.version,
           updateData,
-          retryCount
+          retryCount,
+          userRole,
+          userId: user.id
         });
 
         // Perform the update with version check
-        const { error: updateError } = await supabase
+        const { data: updateResult, error: updateError } = await supabase
           .from('films')
           .update(updateData)
           .eq('id', id)
-          .eq('version', currentFilm.version);
+          .eq('version', currentFilm.version)
+          .select('*')
+          .maybeSingle();
+
+        console.log('Update result:', {
+          success: !updateError,
+          error: updateError,
+          result: updateResult,
+          id,
+          currentVersion: currentFilm.version,
+          retryCount
+        });
 
         if (updateError) {
           console.error('Error updating film:', {
             error: updateError,
             id,
             currentVersion: currentFilm.version,
-            retryCount
+            retryCount,
+            userRole,
+            userId: user.id
           });
           
           // If it's a version conflict, retry
@@ -199,18 +214,63 @@ export const filmService = {
           throw updateError;
         }
 
+        // If no rows were updated, check RLS policies
+        if (!updateResult) {
+          console.error('No rows updated:', {
+            id,
+            currentVersion: currentFilm.version,
+            retryCount,
+            userRole,
+            userId: user.id,
+            updateData
+          });
+
+          // Check if we have the right permissions
+          const { data: policyCheck, error: policyError } = await supabase
+            .from('films')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+
+          console.log('RLS policy check:', {
+            canRead: !!policyCheck,
+            error: policyError,
+            id,
+            userRole,
+            userId: user.id
+          });
+
+          if (!policyCheck) {
+            throw new Error('Permission denied: Unable to update film. Please check your admin role.');
+          }
+
+          retryCount++;
+          if (retryCount < MAX_RETRIES) {
+            console.log('No rows updated, retrying...', {
+              id,
+              retryCount,
+              currentVersion: currentFilm.version
+            });
+            await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+            continue;
+          }
+          throw new Error('Failed to update film: No rows were affected');
+        }
+
         // Verify the update was successful
         const { data: updatedFilm, error: verifyError } = await supabase
           .from('films')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
         if (verifyError) {
           console.error('Error verifying update:', {
             error: verifyError,
             id,
-            retryCount
+            retryCount,
+            userRole,
+            userId: user.id
           });
           throw new Error(`Failed to verify update: ${verifyError.message}`);
         }
@@ -218,7 +278,9 @@ export const filmService = {
         if (!updatedFilm) {
           console.error('Film not found after update:', {
             id,
-            retryCount
+            retryCount,
+            userRole,
+            userId: user.id
           });
           throw new Error(`Film with ID ${id} not found after update`);
         }
@@ -230,7 +292,9 @@ export const filmService = {
           oldVersion: currentFilm.version,
           newVersion: updatedFilm.version,
           updated_at: updatedFilm.updated_at,
-          retryCount
+          retryCount,
+          userRole,
+          userId: user.id
         });
 
         // Verify the status was actually updated
@@ -241,7 +305,9 @@ export const filmService = {
             oldVersion: currentFilm.version,
             newVersion: updatedFilm.version,
             updated_at: updatedFilm.updated_at,
-            retryCount
+            retryCount,
+            userRole,
+            userId: user.id
           });
           
           // If we haven't exceeded retries, try again
@@ -251,7 +317,9 @@ export const filmService = {
               id,
               retryCount,
               expected: status,
-              actual: updatedFilm.status
+              actual: updatedFilm.status,
+              userRole,
+              userId: user.id
             });
             await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
             continue;
