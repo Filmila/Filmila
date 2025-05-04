@@ -155,22 +155,45 @@ export const filmService = {
       console.log('Attempting update:', {
         id,
         updateData,
-        timestamp: now
+        timestamp: now,
+        userRole,
+        userId: user.id
       });
 
-      // Perform the update using only ID
-      const { error: updateError } = await supabase
+      // Perform a direct update without any conditions
+      const { data: updateResult, error: updateError } = await supabase
         .from('films')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
+
+      console.log('Update response:', {
+        success: !updateError,
+        error: updateError,
+        result: updateResult,
+        id,
+        timestamp: now
+      });
 
       if (updateError) {
         console.error('Error updating film:', {
           error: updateError,
           id,
-          timestamp: now
+          timestamp: now,
+          userRole,
+          userId: user.id
         });
         throw new Error(`Failed to update film: ${updateError.message}`);
+      }
+
+      if (!updateResult || updateResult.length === 0) {
+        console.error('No rows updated:', {
+          id,
+          timestamp: now,
+          userRole,
+          userId: user.id
+        });
+        throw new Error('No rows were updated');
       }
 
       // Wait a short moment to ensure the update is processed
@@ -187,7 +210,9 @@ export const filmService = {
         console.error('Error verifying update:', {
           error: verifyError,
           id,
-          timestamp: now
+          timestamp: now,
+          userRole,
+          userId: user.id
         });
         throw new Error(`Failed to verify update: ${verifyError.message}`);
       }
@@ -195,7 +220,9 @@ export const filmService = {
       if (!updatedFilm) {
         console.error('Film not found after update:', { 
           id,
-          timestamp: now
+          timestamp: now,
+          userRole,
+          userId: user.id
         });
         throw new Error(`Film with ID ${id} not found after update`);
       }
@@ -205,7 +232,9 @@ export const filmService = {
         oldStatus: existingFilm.status,
         newStatus: updatedFilm.status,
         oldTimestamp: existingFilm.updated_at,
-        newTimestamp: updatedFilm.updated_at
+        newTimestamp: updatedFilm.updated_at,
+        userRole,
+        userId: user.id
       });
 
       // Verify the status was actually updated
@@ -214,7 +243,10 @@ export const filmService = {
           expected: status,
           actual: updatedFilm.status,
           oldTimestamp: existingFilm.updated_at,
-          newTimestamp: updatedFilm.updated_at
+          newTimestamp: updatedFilm.updated_at,
+          userRole,
+          userId: user.id,
+          updateResult
         });
         throw new Error('Film status was not updated correctly');
       }
