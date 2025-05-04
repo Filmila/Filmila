@@ -139,23 +139,26 @@ export const filmService = {
         updated_at: existingFilm.updated_at
       });
 
+      // Create update data with current timestamp
+      const now = new Date().toISOString();
       const updateData = {
         status: status,
         rejection_note: rejection_note || null,
         last_action: {
           type: status === 'approved' ? 'approve' : 'reject',
-          date: new Date().toISOString(),
+          date: now,
           admin: user.email
         },
-        updated_at: new Date().toISOString()
+        updated_at: now
       };
 
       console.log('Attempting update:', {
         id,
-        updateData
+        updateData,
+        timestamp: now
       });
 
-      // Perform the update without version check
+      // Perform the update using only ID
       const { error: updateError } = await supabase
         .from('films')
         .update(updateData)
@@ -164,10 +167,14 @@ export const filmService = {
       if (updateError) {
         console.error('Error updating film:', {
           error: updateError,
-          id
+          id,
+          timestamp: now
         });
         throw new Error(`Failed to update film: ${updateError.message}`);
       }
+
+      // Wait a short moment to ensure the update is processed
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify the update was successful
       const { data: updatedFilm, error: verifyError } = await supabase
@@ -179,13 +186,17 @@ export const filmService = {
       if (verifyError) {
         console.error('Error verifying update:', {
           error: verifyError,
-          id
+          id,
+          timestamp: now
         });
         throw new Error(`Failed to verify update: ${verifyError.message}`);
       }
 
       if (!updatedFilm) {
-        console.error('Film not found after update:', { id });
+        console.error('Film not found after update:', { 
+          id,
+          timestamp: now
+        });
         throw new Error(`Film with ID ${id} not found after update`);
       }
 
@@ -193,7 +204,8 @@ export const filmService = {
         id: updatedFilm.id,
         oldStatus: existingFilm.status,
         newStatus: updatedFilm.status,
-        updated_at: updatedFilm.updated_at
+        oldTimestamp: existingFilm.updated_at,
+        newTimestamp: updatedFilm.updated_at
       });
 
       // Verify the status was actually updated
@@ -201,7 +213,8 @@ export const filmService = {
         console.error('Status mismatch after update:', {
           expected: status,
           actual: updatedFilm.status,
-          updated_at: updatedFilm.updated_at
+          oldTimestamp: existingFilm.updated_at,
+          newTimestamp: updatedFilm.updated_at
         });
         throw new Error('Film status was not updated correctly');
       }
