@@ -1,9 +1,9 @@
 -- Drop the existing policy
-DROP POLICY IF EXISTS "Admins can update film status and details" ON films;
+DROP POLICY IF EXISTS "Admins can update films" ON "public"."films";
 
--- Create the correct policy
-CREATE POLICY "Admins can update film status and details"
-ON films
+-- Create the new policy with multiple role checks
+CREATE POLICY "Admins can update films"
+ON "public"."films"
 FOR UPDATE
 TO public
 USING (
