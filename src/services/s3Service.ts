@@ -1,12 +1,12 @@
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { s3Client, BUCKET_NAME } from '../config/aws';
+import { s3Client, BUCKET_NAME, AWS_REGION } from '../config/aws';
 
 export const uploadFileToS3 = async (file: File, key: string): Promise<string> => {
   try {
     // Log configuration for debugging
     console.log('Starting upload with config:', {
       bucket: BUCKET_NAME,
-      region: s3Client.config.region,
+      region: AWS_REGION,
       hasCredentials: !!s3Client.config.credentials,
       fileType: file.type,
       fileSize: file.size,
@@ -32,8 +32,8 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
       const response = await s3Client.send(command);
       console.log('Upload successful:', response);
 
-      // Generate and return the public URL
-      const publicUrl = `https://${BUCKET_NAME}.s3.${s3Client.config.region}.amazonaws.com/${key}`;
+      // Generate and return the public URL using the exported region
+      const publicUrl = `https://${BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
       console.log('Generated public URL:', publicUrl);
       console.log('Public URL type:', typeof publicUrl);
       console.log('Public URL stringified:', JSON.stringify(publicUrl));

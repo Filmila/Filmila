@@ -15,14 +15,18 @@ if (!accessKeyId || !secretAccessKey) {
   });
 }
 
+// Create a separate region variable to ensure it's a string
+const awsRegion = String(region);
+
 export const s3Client = new S3Client({
-  region,
+  region: awsRegion,
   credentials: {
     accessKeyId: accessKeyId || '',
     secretAccessKey: secretAccessKey || '',
   },
   forcePathStyle: false,
-  endpoint: `https://s3.${region}.amazonaws.com`,
+  endpoint: `https://s3.${awsRegion}.amazonaws.com`,
 });
 
-export const BUCKET_NAME = bucketName; 
+export const BUCKET_NAME = bucketName;
+export const AWS_REGION = awsRegion; 
