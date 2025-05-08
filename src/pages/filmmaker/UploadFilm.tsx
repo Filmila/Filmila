@@ -79,11 +79,20 @@ const UploadFilm = () => {
     try {
       // Upload video
       const fileKey = `films/${user?.email}/${Date.now()}-${selectedFile.name}`;
+      console.log('Starting video upload with key:', fileKey);
       const videoUrl = await uploadFileToS3(selectedFile, fileKey);
+      console.log('Video upload completed. URL:', videoUrl);
+      console.log('Video URL type:', typeof videoUrl);
+      console.log('Video URL stringified:', JSON.stringify(videoUrl));
+      
       // Upload thumbnail
       const thumbKey = `films/${user?.email}/thumbnails/${Date.now()}-${selectedThumbnail.name}`;
+      console.log('Starting thumbnail upload with key:', thumbKey);
       const thumbnailUrl = await uploadFileToS3(selectedThumbnail, thumbKey);
-      console.log('S3 upload result', { videoUrl, thumbnailUrl, videoUrlType: typeof videoUrl, thumbnailUrlType: typeof thumbnailUrl });
+      console.log('Thumbnail upload completed. URL:', thumbnailUrl);
+      console.log('Thumbnail URL type:', typeof thumbnailUrl);
+      console.log('Thumbnail URL stringified:', JSON.stringify(thumbnailUrl));
+
       // Create a new film object with thumbnail_url
       const newFilm: Omit<Film, 'id'> = {
         title: formData.title || '',

@@ -35,6 +35,8 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
       // Generate and return the public URL
       const publicUrl = `https://${BUCKET_NAME}.s3.${s3Client.config.region}.amazonaws.com/${key}`;
       console.log('Generated public URL:', publicUrl);
+      console.log('Public URL type:', typeof publicUrl);
+      console.log('Public URL stringified:', JSON.stringify(publicUrl));
       return publicUrl;
     } catch (uploadError) {
       console.error('S3 upload error:', {
