@@ -48,5 +48,18 @@ CREATE POLICY "Authenticated users can create payment records"
         status = 'pending'
     );
 
+-- Add UPDATE policy for payment status
+CREATE POLICY "Update payment status"
+    ON film_payments
+    FOR UPDATE
+    TO authenticated
+    USING (
+        viewer_id = auth.uid() AND
+        status = 'pending'
+    )
+    WITH CHECK (
+        status IN ('completed', 'failed')
+    );
+
 -- Add comment
 COMMENT ON TABLE film_payments IS 'Tracks payments made by viewers to access films'; 
