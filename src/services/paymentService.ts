@@ -3,7 +3,7 @@ import { stripeSecretKey } from '../config/stripe';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2025-04-30.basil',
 });
 
 export const paymentService = {

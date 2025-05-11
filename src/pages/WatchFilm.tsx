@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Film } from '../types/index';
 import { supabase } from '../config/supabase';
 import { paymentService } from '../services/paymentService';
@@ -8,7 +8,6 @@ import { toast } from 'react-hot-toast';
 
 const WatchFilm = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [film, setFilm] = useState<Film | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
