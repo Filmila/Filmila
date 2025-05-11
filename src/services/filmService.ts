@@ -14,6 +14,11 @@ export const filmService = {
       throw new Error('Invalid video URL');
     }
 
+    // Validate the thumbnail URL
+    if (!film.thumbnail_url || !film.thumbnail_url.startsWith('https://')) {
+      throw new Error('Invalid thumbnail URL');
+    }
+
     const { data, error } = await supabase
       .from('films')
       .insert([{
@@ -27,6 +32,7 @@ export const filmService = {
         rejection_note: film.rejection_note,
         upload_date: uploadDate.toISOString(),
         video_url: film.video_url,
+        thumbnail_url: film.thumbnail_url,
         last_action: film.last_action,
         version: film.version
       }])
