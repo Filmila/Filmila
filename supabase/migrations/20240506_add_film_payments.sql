@@ -38,5 +38,15 @@ CREATE POLICY "Filmmakers can view payments for their films"
         )
     );
 
+-- Add INSERT policy for authenticated users
+CREATE POLICY "Authenticated users can create payment records"
+    ON film_payments
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        viewer_id = auth.uid() AND
+        status = 'pending'
+    );
+
 -- Add comment
 COMMENT ON TABLE film_payments IS 'Tracks payments made by viewers to access films'; 
