@@ -7,10 +7,12 @@ export interface Film {
   status: 'pending' | 'approved' | 'rejected';
   views: number;
   revenue: number;
+  price: number;
   thumbnail_url?: string;
   video_url: string;
   rejection_note?: string;
   genre: 'Drama' | 'Comedy' | 'Action' | 'Romance' | 'Thriller' | 'Documentary' | 'Horror' | 'Sci-Fi' | 'Animation' | 'Other';
+  version: number;
   last_action?: {
     type: 'approve' | 'reject';
     admin: string;

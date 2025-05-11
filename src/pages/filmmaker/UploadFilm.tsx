@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Film } from '../../types';
+import { Film } from '../../types/index';
 import { useAuth } from '../../context/AuthContext';
 import { uploadFileToS3 } from '../../services/s3Service';
 import { filmService } from '../../services/filmService';

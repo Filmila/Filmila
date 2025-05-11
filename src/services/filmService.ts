@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import { Film } from '../types';
+import { Film } from '../types/index';
 
 export const filmService = {
   async createFilm(film: Omit<Film, 'id'>): Promise<Film> {
