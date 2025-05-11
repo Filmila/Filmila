@@ -4,6 +4,7 @@ import { Film } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { uploadFileToS3 } from '../../services/s3Service';
 import { filmService } from '../../services/filmService';
+import { toast } from 'react-hot-toast';
 
 const UploadFilm = () => {
   const navigate = useNavigate();
@@ -13,13 +14,27 @@ const UploadFilm = () => {
     title: '',
     description: '',
     price: 0,
+    genre: 'Drama'
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedThumbnail, setSelectedThumbnail] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const genres = [
+    'Drama',
+    'Comedy',
+    'Action',
+    'Romance',
+    'Thriller',
+    'Documentary',
+    'Horror',
+    'Sci-Fi',
+    'Animation',
+    'Other'
+  ];
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -82,16 +97,12 @@ const UploadFilm = () => {
       console.log('Starting video upload with key:', fileKey);
       const videoUrl = await uploadFileToS3(selectedFile, fileKey);
       console.log('Video upload completed. URL:', videoUrl);
-      console.log('Video URL type:', typeof videoUrl);
-      console.log('Video URL stringified:', JSON.stringify(videoUrl));
       
       // Upload thumbnail
       const thumbKey = `films/${user?.email}/thumbnails/${Date.now()}-${selectedThumbnail.name}`;
       console.log('Starting thumbnail upload with key:', thumbKey);
       const thumbnailUrl = await uploadFileToS3(selectedThumbnail, thumbKey);
       console.log('Thumbnail upload completed. URL:', thumbnailUrl);
-      console.log('Thumbnail URL type:', typeof thumbnailUrl);
-      console.log('Thumbnail URL stringified:', JSON.stringify(thumbnailUrl));
 
       // Create a new film object with thumbnail_url
       const newFilm: Omit<Film, 'id'> = {
@@ -105,9 +116,11 @@ const UploadFilm = () => {
         upload_date: new Date().toISOString(),
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
+        genre: formData.genre || 'Drama',
         version: 1
       };
       await filmService.createFilm(newFilm);
+      toast.success('Your film was successfully uploaded and is pending approval.');
       navigate('/dashboard');
     } catch (err) {
       console.error('Upload error details:', err);
@@ -154,6 +167,26 @@ const UploadFilm = () => {
             rows={4}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           />
+        </div>
+
+        <div>
+          <label htmlFor="genre" className="block text-sm font-medium text-gray-700">
+            Genre
+          </label>
+          <select
+            id="genre"
+            name="genre"
+            value={formData.genre}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          >
+            {genres.map(genre => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -228,7 +261,7 @@ const UploadFilm = () => {
           </div>
         )}
 
-        <div className="flex justify-end">
+        <div>
           <button
             type="submit"
             disabled={isSubmitting}

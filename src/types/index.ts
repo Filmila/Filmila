@@ -10,6 +10,7 @@ export interface Film {
   thumbnail_url?: string;
   video_url: string;
   rejection_note?: string;
+  genre: 'Drama' | 'Comedy' | 'Action' | 'Romance' | 'Thriller' | 'Documentary' | 'Horror' | 'Sci-Fi' | 'Animation' | 'Other';
   last_action?: {
     type: 'approve' | 'reject';
     admin: string;

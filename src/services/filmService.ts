@@ -19,6 +19,12 @@ export const filmService = {
       throw new Error('Invalid thumbnail URL');
     }
 
+    // Validate the genre
+    const validGenres = ['Drama', 'Comedy', 'Action', 'Romance', 'Thriller', 'Documentary', 'Horror', 'Sci-Fi', 'Animation', 'Other'];
+    if (!film.genre || !validGenres.includes(film.genre)) {
+      throw new Error('Invalid genre');
+    }
+
     const { data, error } = await supabase
       .from('films')
       .insert([{
@@ -33,6 +39,7 @@ export const filmService = {
         upload_date: uploadDate.toISOString(),
         video_url: film.video_url,
         thumbnail_url: film.thumbnail_url,
+        genre: film.genre,
         last_action: film.last_action,
         version: film.version
       }])
