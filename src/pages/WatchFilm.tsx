@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Film } from '../types/index';
 import { supabase } from '../config/supabase';
 import { paymentService } from '../services/paymentService';
@@ -8,13 +8,17 @@ import { toast } from 'react-hot-toast';
 
 const WatchFilm = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [film, setFilm] = useState<Film | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchFilm = async () => {
-      if (!id) return;
+      if (!id) {
+        navigate('/');
+        return;
+      }
 
       try {
         // Fetch film details
@@ -24,7 +28,13 @@ const WatchFilm = () => {
           .eq('id', id)
           .single();
 
-        if (filmError) throw filmError;
+        if (filmError) {
+          console.error('Error fetching film:', filmError);
+          toast.error('Failed to load film');
+          navigate('/');
+          return;
+        }
+
         setFilm(filmData);
 
         // Check if user has access
@@ -33,13 +43,14 @@ const WatchFilm = () => {
       } catch (error) {
         console.error('Error fetching film:', error);
         toast.error('Failed to load film');
+        navigate('/');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchFilm();
-  }, [id]);
+  }, [id, navigate]);
 
   const handlePayment = async () => {
     if (!film || !id) return;
