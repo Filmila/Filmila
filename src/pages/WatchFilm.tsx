@@ -12,6 +12,15 @@ const WatchFilm = () => {
   const [film, setFilm] = useState<Film | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+    };
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const fetchFilm = async () => {
@@ -54,6 +63,12 @@ const WatchFilm = () => {
 
   const handlePayment = async () => {
     if (!film || !id) return;
+
+    if (!isAuthenticated) {
+      toast.error('Please log in to purchase access');
+      navigate('/login', { state: { from: `/watch/${id}` } });
+      return;
+    }
 
     try {
       const stripe = await stripePromise;
@@ -125,7 +140,7 @@ const WatchFilm = () => {
               onClick={handlePayment}
               className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              Purchase Access
+              {isAuthenticated ? 'Purchase Access' : 'Log in to Purchase'}
             </button>
           </div>
         </div>
