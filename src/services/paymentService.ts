@@ -40,7 +40,7 @@ export const paymentService = {
     const { error } = await supabase
       .from('film_payments')
       .insert({
-        film_id: filmId,
+        film_id: parseInt(filmId, 10), // Convert string to number
         viewer_id: user.id,
         stripe_payment_id: session.id,
         amount: price,
@@ -81,7 +81,7 @@ export const paymentService = {
     const { data: film } = await supabase
       .from('films')
       .select('filmmaker')
-      .eq('id', filmId)
+      .eq('id', parseInt(filmId, 10)) // Convert string to number
       .single();
 
     if (film?.filmmaker === user.email) return true;
@@ -90,7 +90,7 @@ export const paymentService = {
     const { data: payment } = await supabase
       .from('film_payments')
       .select('status')
-      .eq('film_id', filmId)
+      .eq('film_id', parseInt(filmId, 10)) // Convert string to number
       .eq('viewer_id', user.id)
       .eq('status', 'completed')
       .single();
