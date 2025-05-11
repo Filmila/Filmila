@@ -3,13 +3,14 @@ import { loadStripe } from '@stripe/stripe-js';
 export const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 export const stripeSecretKey = import.meta.env.VITE_STRIPE_SECRET_KEY;
 
+// Validate environment variables
 if (!stripePublishableKey) {
-  throw new Error('Missing VITE_STRIPE_PUBLISHABLE_KEY environment variable');
+  console.error('Missing VITE_STRIPE_PUBLISHABLE_KEY environment variable');
 }
 
 if (!stripeSecretKey) {
-  throw new Error('Missing VITE_STRIPE_SECRET_KEY environment variable');
+  console.error('Missing VITE_STRIPE_SECRET_KEY environment variable');
 }
 
 // Initialize Stripe
-export const stripePromise = loadStripe(stripePublishableKey); 
+export const stripePromise = loadStripe(stripePublishableKey || ''); 
