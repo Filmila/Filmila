@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
@@ -28,11 +28,15 @@ import Settings from './pages/filmmaker/Settings';
 import FilmmakerLayout from './components/layout/FilmmakerLayout';
 
 function App() {
+  const location = useLocation();
+  // Hide Navbar on dashboard routes
+  const hideNavbar = location.pathname.startsWith('/filmmaker') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/viewer');
+
   return (
     <AuthProvider>
       <Router>
         <Toaster />
-        <Navbar />
+        {!hideNavbar && <Navbar />}
         <main className="min-h-screen bg-gray-50 pt-4">
           <Routes>
             <Route path="/" element={<Home />} />
