@@ -13,18 +13,5 @@ CREATE POLICY "Allow updating film views"
     )
     WITH CHECK (
         -- Only allow updating the views column
-        OLD.* IS DISTINCT FROM NEW.* AND
-        OLD.views IS DISTINCT FROM NEW.views AND
-        -- Ensure all other columns remain unchanged
-        OLD.id = NEW.id AND
-        OLD.title = NEW.title AND
-        OLD.description = NEW.description AND
-        OLD.filmmaker = NEW.filmmaker AND
-        OLD.status = NEW.status AND
-        OLD.revenue = NEW.revenue AND
-        OLD.upload_date = NEW.upload_date AND
-        OLD.video_url = NEW.video_url AND
-        OLD.thumbnail_url = NEW.thumbnail_url AND
-        OLD.price = NEW.price AND
-        OLD.genre = NEW.genre
+        views > 0
     ); 
