@@ -42,13 +42,10 @@ const WatchFilm = () => {
       }
 
       try {
-        // Fetch film details with filmmaker's display name
+        // Fetch film details
         const { data: filmData, error: filmError } = await supabase
           .from('films')
-          .select(`
-            *,
-            filmmaker_profile:profiles!films_filmmaker_fkey(display_name)
-          `)
+          .select('*')
           .eq('id', id)
           .single();
 
@@ -59,9 +56,20 @@ const WatchFilm = () => {
           return;
         }
 
+        // Fetch filmmaker's display name
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('email', filmData.filmmaker)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching filmmaker profile:', profileError);
+        }
+
         setFilm({
           ...filmData,
-          filmmaker_display_name: filmData.filmmaker_profile?.display_name
+          filmmaker_display_name: profileData?.display_name
         });
 
         // Check if user has access
