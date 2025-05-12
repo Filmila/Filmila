@@ -1,7 +1,7 @@
 -- Create film_payments table
 CREATE TABLE IF NOT EXISTS film_payments (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    film_id BIGINT NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+    film_id UUID NOT NULL REFERENCES films(id) ON DELETE CASCADE,
     viewer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     stripe_payment_id TEXT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
