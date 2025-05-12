@@ -27,6 +27,7 @@ const WatchFilm = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewTracked = useRef(false);
+  const [profile, setProfile] = useState<{ display_name?: string } | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,10 +46,10 @@ const WatchFilm = () => {
       }
 
       try {
-        // Fetch film details with profile join
+        // Fetch film details
         const { data: filmData, error: filmError } = await supabase
           .from('films')
-          .select('*,profile:profiles(display_name)')
+          .select('*')
           .eq('id', id)
           .single();
 
@@ -60,6 +61,18 @@ const WatchFilm = () => {
         }
 
         setFilm(filmData as FilmWithFilmmaker);
+
+        // Fetch filmmaker's display name
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('email', filmData.filmmaker)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching filmmaker profile:', profileError);
+        }
+        setProfile(profileData);
 
         // Check if user has access
         const access = await paymentService.hasAccessToFilm(id);
@@ -219,7 +232,7 @@ const WatchFilm = () => {
             <div>
               <p className="text-lg font-semibold">Price: ${film.price.toFixed(2)}</p>
               <p className="text-sm text-gray-500">
-                Filmmaker: {film.profile?.display_name || film.filmmaker}
+                Filmmaker: {profile?.display_name || film.filmmaker}
               </p>
             </div>
             <button
@@ -250,7 +263,7 @@ const WatchFilm = () => {
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <p className="text-gray-600 mb-4">{film.description}</p>
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <p>Filmmaker: {film.profile?.display_name || film.filmmaker}</p>
+          <p>Filmmaker: {profile?.display_name || film.filmmaker}</p>
           <p>Genre: {film.genre}</p>
         </div>
       </div>
