@@ -46,7 +46,7 @@ const WatchFilm = () => {
       }
 
       try {
-        // Fetch film details
+        // Always fetch film details
         const { data: filmData, error: filmError } = await supabase
           .from('films')
           .select('*')
@@ -62,17 +62,20 @@ const WatchFilm = () => {
 
         setFilm(filmData as FilmWithFilmmaker);
 
-        // Fetch filmmaker's display name
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('email', filmData.filmmaker)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching filmmaker profile:', profileError);
+        // Always fetch filmmaker's display name using the email from film.filmmaker
+        let displayName = null;
+        if (filmData && filmData.filmmaker) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('email', filmData.filmmaker)
+            .single();
+          if (profileError) {
+            console.error('Error fetching filmmaker profile:', profileError);
+          }
+          displayName = profileData;
         }
-        setProfile(profileData);
+        setProfile(displayName);
 
         // Check if user has access
         const access = await paymentService.hasAccessToFilm(id);
