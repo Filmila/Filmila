@@ -147,13 +147,23 @@ const WatchFilm = () => {
     if (!hasPaid) return;
 
     try {
-      const { error } = await supabase
+      console.log('Incrementing views for film:', id);
+      const { data, error } = await supabase
         .from('films')
-        .update({ views: film.views + 1 })
-        .eq('id', id);
+        .update({ views: (film.views || 0) + 1 })
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating views:', error);
+        throw error;
+      }
+
+      console.log('Views updated successfully:', data);
       viewTracked.current = true;
+      // Update the local film state with new views count
+      setFilm(prev => prev ? { ...prev, views: data.views } : null);
     } catch (error) {
       console.error('Error tracking view:', error);
     }
