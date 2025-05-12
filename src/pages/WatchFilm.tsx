@@ -7,10 +7,14 @@ import { commentService, Comment } from '../services/commentService';
 import { stripePromise } from '../config/stripe';
 import { toast } from 'react-hot-toast';
 
+interface FilmWithFilmmaker extends Film {
+  filmmaker_display_name?: string;
+}
+
 const WatchFilm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [film, setFilm] = useState<Film | null>(null);
+  const [film, setFilm] = useState<FilmWithFilmmaker | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -38,10 +42,13 @@ const WatchFilm = () => {
       }
 
       try {
-        // Fetch film details
+        // Fetch film details with filmmaker's display name
         const { data: filmData, error: filmError } = await supabase
           .from('films')
-          .select('*')
+          .select(`
+            *,
+            filmmaker_profile:profiles!films_filmmaker_fkey(display_name)
+          `)
           .eq('id', id)
           .single();
 
@@ -52,7 +59,10 @@ const WatchFilm = () => {
           return;
         }
 
-        setFilm(filmData);
+        setFilm({
+          ...filmData,
+          filmmaker_display_name: filmData.filmmaker_profile?.display_name
+        });
 
         // Check if user has access
         const access = await paymentService.hasAccessToFilm(id);
@@ -211,7 +221,9 @@ const WatchFilm = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold">Price: ${film.price.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">Filmmaker: {film.filmmaker}</p>
+              <p className="text-sm text-gray-500">
+                Filmmaker: {film.filmmaker_display_name || film.filmmaker}
+              </p>
             </div>
             <button
               onClick={handlePayment}
@@ -241,7 +253,7 @@ const WatchFilm = () => {
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <p className="text-gray-600 mb-4">{film.description}</p>
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <p>Filmmaker: {film.filmmaker}</p>
+          <p>Filmmaker: {film.filmmaker_display_name || film.filmmaker}</p>
           <p>Genre: {film.genre}</p>
         </div>
       </div>

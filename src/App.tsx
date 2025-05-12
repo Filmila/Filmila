@@ -10,7 +10,7 @@ import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard';
 import UploadFilm from './pages/filmmaker/UploadFilm';
 import FilmsManagement from './pages/admin/FilmsManagement';
 import UserManagement from './pages/admin/UserManagement';
-import Settings from './pages/admin/Settings';
+import AdminSettings from './pages/admin/Settings';
 import AdminLayout from './components/layout/AdminLayout';
 import ViewerLayout from './components/layout/ViewerLayout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -24,6 +24,8 @@ import Favorites from './pages/viewer/Favorites';
 import Contact from './pages/Contact';
 import About from './pages/About';
 import WatchFilm from './pages/WatchFilm';
+import Settings from './pages/filmmaker/Settings';
+import FilmmakerLayout from './components/layout/FilmmakerLayout';
 
 function App() {
   return (
@@ -49,7 +51,7 @@ function App() {
                   <Routes>
                     <Route path="films" element={<FilmsManagement />} />
                     <Route path="users" element={<UserManagement />} />
-                    <Route path="settings" element={<Settings />} />
+                    <Route path="settings" element={<AdminSettings />} />
                     <Route index element={<Navigate to="films" replace />} />
                   </Routes>
                 </AdminLayout>
@@ -59,11 +61,14 @@ function App() {
             {/* Filmmaker Routes */}
             <Route path="/filmmaker/*" element={
               <ProtectedRoute requiredRole="FILMMAKER">
-                <Routes>
-                  <Route path="dashboard" element={<FilmmakerDashboard />} />
-                  <Route path="upload" element={<UploadFilm />} />
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Routes>
+                <FilmmakerLayout>
+                  <Routes>
+                    <Route path="dashboard" element={<FilmmakerDashboard />} />
+                    <Route path="upload" element={<UploadFilm />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                  </Routes>
+                </FilmmakerLayout>
               </ProtectedRoute>
             } />
 
