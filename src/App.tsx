@@ -67,6 +67,7 @@ function AppRoutes() {
               <FilmmakerLayout>
                 <Routes>
                   <Route path="dashboard" element={<FilmmakerDashboard />} />
+                  <Route path="films" element={<MyFilms />} />
                   <Route path="upload" element={<UploadFilm />} />
                   <Route path="settings" element={<Settings />} />
                   <Route index element={<Navigate to="dashboard" replace />} />
