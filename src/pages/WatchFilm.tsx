@@ -9,6 +9,9 @@ import { toast } from 'react-hot-toast';
 
 interface FilmWithFilmmaker extends Film {
   filmmaker_display_name?: string;
+  profile?: {
+    display_name?: string;
+  };
 }
 
 const WatchFilm = () => {
@@ -42,10 +45,10 @@ const WatchFilm = () => {
       }
 
       try {
-        // Fetch film details
+        // Fetch film details with profile join
         const { data: filmData, error: filmError } = await supabase
           .from('films')
-          .select('*')
+          .select('*,profile:profiles(display_name)')
           .eq('id', id)
           .single();
 
@@ -56,21 +59,7 @@ const WatchFilm = () => {
           return;
         }
 
-        // Fetch filmmaker's display name
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('email', filmData.filmmaker)
-          .single();
-
-        if (profileError) {
-          console.error('Error fetching filmmaker profile:', profileError);
-        }
-
-        setFilm({
-          ...filmData,
-          filmmaker_display_name: profileData?.display_name
-        });
+        setFilm(filmData as FilmWithFilmmaker);
 
         // Check if user has access
         const access = await paymentService.hasAccessToFilm(id);
@@ -230,7 +219,7 @@ const WatchFilm = () => {
             <div>
               <p className="text-lg font-semibold">Price: ${film.price.toFixed(2)}</p>
               <p className="text-sm text-gray-500">
-                Filmmaker: {film.filmmaker_display_name || film.filmmaker}
+                Filmmaker: {film.profile?.display_name || film.filmmaker}
               </p>
             </div>
             <button
@@ -261,7 +250,7 @@ const WatchFilm = () => {
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <p className="text-gray-600 mb-4">{film.description}</p>
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <p>Filmmaker: {film.filmmaker_display_name || film.filmmaker}</p>
+          <p>Filmmaker: {film.profile?.display_name || film.filmmaker}</p>
           <p>Genre: {film.genre}</p>
         </div>
       </div>
