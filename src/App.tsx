@@ -27,79 +27,87 @@ import WatchFilm from './pages/WatchFilm';
 import Settings from './pages/filmmaker/Settings';
 import FilmmakerLayout from './components/layout/FilmmakerLayout';
 
-function App() {
+function AppRoutes() {
   const location = useLocation();
   // Hide Navbar on dashboard routes
   const hideNavbar = location.pathname.startsWith('/filmmaker') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/viewer');
 
   return (
+    <>
+      <Toaster />
+      {!hideNavbar && <Navbar />}
+      <main className="min-h-screen bg-gray-50 pt-4">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<RoleSelection />} />
+          <Route path="/register/filmmaker" element={<Register defaultRole="FILMMAKER" />} />
+          <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
+          <Route path="/test-connection" element={<TestConnection />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/*" element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <AdminLayout>
+                <Routes>
+                  <Route path="films" element={<FilmsManagement />} />
+                  <Route path="users" element={<UserManagement />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route index element={<Navigate to="films" replace />} />
+                </Routes>
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Filmmaker Routes */}
+          <Route path="/filmmaker/*" element={
+            <ProtectedRoute requiredRole="FILMMAKER">
+              <FilmmakerLayout>
+                <Routes>
+                  <Route path="dashboard" element={<FilmmakerDashboard />} />
+                  <Route path="upload" element={<UploadFilm />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Routes>
+              </FilmmakerLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Viewer Routes */}
+          <Route path="/viewer/*" element={
+            <ProtectedRoute requiredRole="VIEWER">
+              <ViewerLayout>
+                <Routes>
+                  <Route path="dashboard" element={<ViewerDashboard />} />
+                  <Route path="my-films" element={<MyFilms />} />
+                  <Route path="continue-watching" element={<ContinueWatching />} />
+                  <Route path="watchlist" element={<Watchlist />} />
+                  <Route path="favorites" element={<Favorites />} />
+                  <Route path="settings" element={<ViewerSettings />} />
+                  <Route index element={<Navigate to="dashboard" replace />} />
+                </Routes>
+              </ViewerLayout>
+            </ProtectedRoute>
+          } />
+
+          {/* Watch Film Route */}
+          <Route path="/watch/:id" element={<WatchFilm />} />
+
+          {/* Catch-all route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </>
+  );
+}
+
+function App() {
+  return (
     <AuthProvider>
       <Router>
-        <Toaster />
-        {!hideNavbar && <Navbar />}
-        <main className="min-h-screen bg-gray-50 pt-4">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<RoleSelection />} />
-            <Route path="/register/filmmaker" element={<Register defaultRole="FILMMAKER" />} />
-            <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
-            <Route path="/test-connection" element={<TestConnection />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/about" element={<About />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/*" element={
-              <ProtectedRoute requiredRole="ADMIN">
-                <AdminLayout>
-                  <Routes>
-                    <Route path="films" element={<FilmsManagement />} />
-                    <Route path="users" element={<UserManagement />} />
-                    <Route path="settings" element={<AdminSettings />} />
-                    <Route index element={<Navigate to="films" replace />} />
-                  </Routes>
-                </AdminLayout>
-              </ProtectedRoute>
-            } />
-
-            {/* Filmmaker Routes */}
-            <Route path="/filmmaker/*" element={
-              <ProtectedRoute requiredRole="FILMMAKER">
-                <FilmmakerLayout>
-                  <Routes>
-                    <Route path="dashboard" element={<FilmmakerDashboard />} />
-                    <Route path="upload" element={<UploadFilm />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route index element={<Navigate to="dashboard" replace />} />
-                  </Routes>
-                </FilmmakerLayout>
-              </ProtectedRoute>
-            } />
-
-            {/* Viewer Routes */}
-            <Route path="/viewer/*" element={
-              <ProtectedRoute requiredRole="VIEWER">
-                <ViewerLayout>
-                  <Routes>
-                    <Route path="dashboard" element={<ViewerDashboard />} />
-                    <Route path="my-films" element={<MyFilms />} />
-                    <Route path="continue-watching" element={<ContinueWatching />} />
-                    <Route path="watchlist" element={<Watchlist />} />
-                    <Route path="favorites" element={<Favorites />} />
-                    <Route path="settings" element={<ViewerSettings />} />
-                    <Route index element={<Navigate to="dashboard" replace />} />
-                  </Routes>
-                </ViewerLayout>
-              </ProtectedRoute>
-            } />
-
-            {/* Watch Film Route */}
-            <Route path="/watch/:id" element={<WatchFilm />} />
-
-            {/* Catch-all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
+        <AppRoutes />
       </Router>
     </AuthProvider>
   );
