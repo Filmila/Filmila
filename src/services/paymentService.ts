@@ -11,6 +11,19 @@ export const paymentService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    // Check for existing payment
+    const { data: existingPayment } = await supabase
+      .from('film_payments')
+      .select('*')
+      .eq('film_id', filmId)
+      .eq('viewer_id', user.id)
+      .in('status', ['pending', 'completed'])
+      .single();
+
+    if (existingPayment) {
+      throw new Error('You have already initiated or completed a payment for this film.');
+    }
+
     // Create a Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
