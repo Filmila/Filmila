@@ -15,9 +15,7 @@ interface FilmWithFilmmaker extends Film {
 }
 
 interface CommentWithProfile extends Comment {
-  profile?: {
-    display_name?: string;
-  };
+  display_name?: string;
 }
 
 const WatchFilm = () => {
@@ -43,6 +41,35 @@ const WatchFilm = () => {
     };
     checkAuth();
   }, []);
+
+  // Helper to fetch comments with display names
+  async function fetchCommentsWithDisplayNames(filmId: string) {
+    // 1. Fetch comments
+    const { data: comments, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('film_id', filmId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!comments || comments.length === 0) return [];
+
+    // 2. Get unique viewer_ids
+    const viewerIds = [...new Set(comments.map(c => c.viewer_id))];
+
+    // 3. Fetch all profiles for those viewer_ids
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', viewerIds);
+    const profileMap: Record<string, string> = {};
+    (profiles || []).forEach(p => { profileMap[p.id] = p.display_name; });
+
+    // 4. Attach display_name to each comment
+    return comments.map(c => ({
+      ...c,
+      display_name: profileMap[c.viewer_id] || 'Unknown',
+    }));
+  }
 
   useEffect(() => {
     const fetchFilm = async () => {
@@ -86,13 +113,9 @@ const WatchFilm = () => {
         const access = await paymentService.hasAccessToFilm(id);
         setHasAccess(access);
 
-        // Fetch comments with profile join
-        const comments = await supabase
-          .from('comments')
-          .select('*,profile:profiles(display_name)')
-          .eq('film_id', id)
-          .order('created_at', { ascending: false });
-        setComments(comments.data || []);
+        // Fetch comments with display names
+        const commentsWithNames = await fetchCommentsWithDisplayNames(id);
+        setComments(commentsWithNames);
       } catch (error) {
         toast.error('Failed to load film');
         navigate('/');
@@ -138,17 +161,12 @@ const WatchFilm = () => {
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !newComment.trim()) return;
-
     setIsSubmittingComment(true);
     try {
       await commentService.addComment(id, newComment.trim());
       // Re-fetch comments after posting
-      const comments = await supabase
-        .from('comments')
-        .select('*,profile:profiles(display_name)')
-        .eq('film_id', id)
-        .order('created_at', { ascending: false });
-      setComments(comments.data || []);
+      const commentsWithNames = await fetchCommentsWithDisplayNames(id);
+      setComments(commentsWithNames);
       setNewComment('');
       toast.success('Comment added successfully');
     } catch (error) {
@@ -318,7 +336,7 @@ const WatchFilm = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="font-semibold text-indigo-700 mr-2">
-                      {comment.profile?.display_name || 'Unknown'}
+                      {comment.display_name}
                     </span>
                     <span className="text-gray-800">{comment.comment}</span>
                   </div>
