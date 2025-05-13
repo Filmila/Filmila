@@ -37,13 +37,15 @@ export const commentService = {
 
     const { data, error } = await supabase
       .from('comments')
-      .insert([{
+      .insert({
         film_id: filmId,
         viewer_id: user.id,
-        comment
-      }])
-      .select()
+        comment,
+        created_at: new Date().toISOString(),
+      })
       .single();
+
+    console.log('Add comment result:', data, 'Error:', error);
 
     if (error) throw error;
     return data;
