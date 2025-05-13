@@ -141,8 +141,14 @@ const WatchFilm = () => {
 
     setIsSubmittingComment(true);
     try {
-      const comment = await commentService.addComment(id, newComment.trim());
-      setComments(prev => [comment, ...prev]);
+      await commentService.addComment(id, newComment.trim());
+      // Re-fetch comments after posting
+      const comments = await supabase
+        .from('comments')
+        .select('*,profile:profiles(display_name)')
+        .eq('film_id', id)
+        .order('created_at', { ascending: false });
+      setComments(comments.data || []);
       setNewComment('');
       toast.success('Comment added successfully');
     } catch (error) {
@@ -307,27 +313,29 @@ const WatchFilm = () => {
         {/* Comments List */}
         <div className="space-y-4">
           {comments.map((comment) => (
-            <div key={comment.id} className="border-b pb-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="font-semibold text-indigo-700 mr-2">
-                    {comment.profile?.display_name || 'Unknown'}
-                  </span>
-                  <span className="text-gray-800">{comment.comment}</span>
+            comment ? (
+              <div key={comment.id} className="border-b pb-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="font-semibold text-indigo-700 mr-2">
+                      {comment.profile?.display_name || 'Unknown'}
+                    </span>
+                    <span className="text-gray-800">{comment.comment}</span>
+                  </div>
+                  {isAuthenticated && comment.viewer_id === currentUserId && (
+                    <button
+                      onClick={() => handleDeleteComment(comment.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
-                {isAuthenticated && comment.viewer_id === currentUserId && (
-                  <button
-                    onClick={() => handleDeleteComment(comment.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Delete
-                  </button>
-                )}
+                <p className="text-sm text-gray-500 mt-1">
+                  {new Date(comment.created_at).toLocaleDateString()}
+                </p>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                {new Date(comment.created_at).toLocaleDateString()}
-              </p>
-            </div>
+            ) : null
           ))}
           {comments.length === 0 && (
             <p className="text-gray-500 text-center">No comments yet. Be the first to comment!</p>
