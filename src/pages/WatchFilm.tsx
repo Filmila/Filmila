@@ -14,6 +14,12 @@ interface FilmWithFilmmaker extends Film {
   };
 }
 
+interface CommentWithProfile extends Comment {
+  profile?: {
+    display_name?: string;
+  };
+}
+
 const WatchFilm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -21,7 +27,7 @@ const WatchFilm = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [comments, setComments] = useState<CommentWithProfile[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -80,9 +86,13 @@ const WatchFilm = () => {
         const access = await paymentService.hasAccessToFilm(id);
         setHasAccess(access);
 
-        // Fetch comments
-        const comments = await commentService.getComments(id);
-        setComments(comments);
+        // Fetch comments with profile join
+        const comments = await supabase
+          .from('comments')
+          .select('*,profile:profiles(display_name)')
+          .eq('film_id', id)
+          .order('created_at', { ascending: false });
+        setComments(comments.data || []);
       } catch (error) {
         toast.error('Failed to load film');
         navigate('/');
@@ -299,7 +309,12 @@ const WatchFilm = () => {
           {comments.map((comment) => (
             <div key={comment.id} className="border-b pb-4">
               <div className="flex justify-between items-start">
-                <p className="text-gray-800">{comment.comment}</p>
+                <div>
+                  <span className="font-semibold text-indigo-700 mr-2">
+                    {comment.profile?.display_name || 'Unknown'}
+                  </span>
+                  <span className="text-gray-800">{comment.comment}</span>
+                </div>
                 {isAuthenticated && comment.viewer_id === currentUserId && (
                   <button
                     onClick={() => handleDeleteComment(comment.id)}
