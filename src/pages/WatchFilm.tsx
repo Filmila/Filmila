@@ -46,33 +46,31 @@ const WatchFilm = () => {
       }
 
       try {
-        // Always fetch film details
+        // Fetch film
         const { data: filmData, error: filmError } = await supabase
           .from('films')
           .select('*')
           .eq('id', id)
           .single();
 
-        if (filmError) {
-          console.error('Error fetching film:', filmError);
+        if (filmError || !filmData) {
           toast.error('Failed to load film');
           navigate('/');
           return;
         }
 
-        setFilm(filmData as FilmWithFilmmaker);
+        setFilm(filmData);
 
-        // Always fetch filmmaker's display name using the email from film.filmmaker
-        if (filmData && filmData.filmmaker) {
+        // Fetch display_name using filmmaker email
+        if (filmData.filmmaker) {
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('display_name')
             .eq('email', filmData.filmmaker)
             .single();
-          console.log('Profile fetched:', profileData);
-          if (profileError) {
-            console.error('Error fetching filmmaker profile:', profileError);
-          }
+
+          console.log('Profile fetched:', profileData, 'Error:', profileError);
+
           setProfile(profileData);
         } else {
           setProfile(null);
@@ -86,7 +84,6 @@ const WatchFilm = () => {
         const comments = await commentService.getComments(id);
         setComments(comments);
       } catch (error) {
-        console.error('Error fetching film:', error);
         toast.error('Failed to load film');
         navigate('/');
       } finally {
@@ -236,7 +233,7 @@ const WatchFilm = () => {
             <div>
               <p className="text-lg font-semibold">Price: ${film.price.toFixed(2)}</p>
               <p className="text-sm text-gray-500">
-                Filmmaker: {profile?.display_name || film.filmmaker}
+                Filmmaker: {profile?.display_name ? profile.display_name : film?.filmmaker}
               </p>
             </div>
             <button
@@ -267,7 +264,7 @@ const WatchFilm = () => {
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <p className="text-gray-600 mb-4">{film.description}</p>
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <p>Filmmaker: {profile?.display_name || film.filmmaker}</p>
+          <p>Filmmaker: {profile?.display_name ? profile.display_name : film?.filmmaker}</p>
           <p>Genre: {film.genre}</p>
         </div>
       </div>
