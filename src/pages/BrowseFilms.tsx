@@ -34,7 +34,7 @@ const BrowseFilms = () => {
       const { data: films, error } = await supabase
         .from('films')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('upload_date', { ascending: false });
       if (error) return setLoading(false);
       if (!films) return setLoading(false);
 
