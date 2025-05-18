@@ -1,9 +1,16 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+
+  useEffect(() => {
+    document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+  }, [i18n.language]);
 
   const handleLogout = async () => {
     await logout();
@@ -26,24 +33,32 @@ const Navbar = () => {
             </Link>
             <div className="hidden md:flex ml-10 space-x-8">
               <Link to="/browse" className="text-gray-600 hover:text-purple-600">
-                Browse Films
+                {t('browse_films')}
               </Link>
               <Link to="/filmmakers" className="text-gray-600 hover:text-purple-600">
-                Filmmakers
+                {t('filmmakers')}
               </Link>
               <Link to="/ratings" className="text-gray-600 hover:text-purple-600">
-                Ratings
+                {t('ratings')}
               </Link>
               <Link to="/about" className="text-gray-600 hover:text-purple-600">
-                About
+                {t('about')}
               </Link>
               <Link to="/contact" className="text-gray-600 hover:text-purple-600">
-                Contact
+                {t('contact')}
               </Link>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
+            {/* Language Switcher */}
+            <button
+              onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+              className="px-2 py-1 rounded text-sm border border-gray-300 hover:bg-gray-100"
+              aria-label="Switch language"
+            >
+              {i18n.language === 'ar' ? 'EN' : 'عربي'}
+            </button>
             {isAuthenticated && user ? (
               <div className="flex items-center space-x-4">
                 <Link
@@ -59,7 +74,7 @@ const Navbar = () => {
                   onClick={handleLogout}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 >
-                  Logout
+                  {t('logout')}
                 </button>
               </div>
             ) : (
@@ -68,13 +83,13 @@ const Navbar = () => {
                   to="/login"
                   className="text-gray-600 hover:text-purple-600"
                 >
-                  Login
+                  {t('login')}
                 </Link>
                 <Link
                   to="/register"
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                 >
-                  Sign Up
+                  {t('signup')}
                 </Link>
               </div>
             )}
