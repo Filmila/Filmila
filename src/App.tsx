@@ -26,6 +26,7 @@ import About from './pages/About';
 import WatchFilm from './pages/WatchFilm';
 import Settings from './pages/filmmaker/Settings';
 import FilmmakerLayout from './components/layout/FilmmakerLayout';
+import BrowseFilms from './pages/BrowseFilms';
 
 function AppRoutes() {
   const location = useLocation();
@@ -95,6 +96,9 @@ function AppRoutes() {
 
           {/* Watch Film Route */}
           <Route path="/watch/:id" element={<WatchFilm />} />
+
+          {/* Browse Films Route */}
+          <Route path="/browse" element={<BrowseFilms />} />
 
           {/* Catch-all route */}
           <Route path="*" element={<Navigate to="/" replace />} />
