@@ -21,8 +21,14 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-purple-600">
-              Filmila
+            <Link to="/" className="flex items-center text-2xl font-bold text-purple-600">
+              <img
+                src="https://www2.0zz0.com/2025/05/18/09/293297060.png"
+                alt="Filmila Logo"
+                className="h-9 w-auto mr-2"
+                style={{ maxHeight: '36px' }}
+              />
+              <span>Filmila</span>
             </Link>
             <div className="hidden md:flex ml-10 space-x-8">
               <Link to="/browse" className="text-gray-600 hover:text-purple-600">
