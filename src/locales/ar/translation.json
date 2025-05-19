@@ -1,11 +1,104 @@
 {
-  "welcome": "مرحبًا بك في فيلميلا!",
+  "welcome": "مرحباً بك في فيلميلا!",
   "logout": "تسجيل الخروج",
   "login": "تسجيل الدخول",
   "signup": "إنشاء حساب",
   "browse_films": "تصفح الأفلام",
-  "filmmakers": "صنّاع الأفلام",
+  "filmmakers": "صانعي الأفلام",
   "ratings": "التقييمات",
   "about": "حول",
-  "contact": "اتصل بنا"
+  "contact": "اتصل بنا",
+  "minutes": "دقيقة",
+  "watchNow": "شاهد الآن",
+  "recentlyAdded": "أضيف مؤخراً",
+  "topRated": "الأعلى تقييماً",
+  "watch": "شاهد",
+  "action": "أكشن",
+  "drama": "دراما",
+  "comedy": "كوميديا",
+  "uploadFilm": {
+    "title": "رفع فيلم جديد",
+    "form": {
+      "title": "العنوان",
+      "description": "الوصف",
+      "genre": "النوع",
+      "price": "السعر (دولار أمريكي)",
+      "videoFile": "ملف الفيديو",
+      "thumbnailImage": "صورة مصغرة",
+      "submit": "رفع الفيلم"
+    },
+    "errors": {
+      "videoRequired": "الرجاء اختيار ملف فيديو",
+      "thumbnailRequired": "الرجاء اختيار صورة مصغرة",
+      "invalidVideo": "الرجاء رفع ملف فيديو صالح",
+      "invalidThumbnail": "الرجاء رفع ملف صورة صالح للصورة المصغرة",
+      "videoSizeLimit": "يجب أن يكون حجم الملف أقل من 500 ميجابايت",
+      "thumbnailSizeLimit": "يجب أن يكون حجم الصورة المصغرة أقل من 5 ميجابايت",
+      "uploadFailed": "فشل رفع الفيلم. يرجى التحقق من اتصال الشبكة والمحاولة مرة أخرى."
+    },
+    "success": "تم رفع فيلمك بنجاح وهو قيد المراجعة.",
+    "selectedFile": "الملف المحدد: {{name}} ({{size}} ميجابايت)"
+  },
+  "watchFilm": {
+    "loading": "جاري تحميل الفيلم...",
+    "errors": {
+      "loadFailed": "فشل تحميل الفيلم",
+      "paymentFailed": "فشل بدء عملية الدفع",
+      "paymentVerificationFailed": "فشل التحقق من الدفع",
+      "loginRequired": "الرجاء تسجيل الدخول لشراء الفيلم",
+      "commentFailed": "فشل إضافة التعليق",
+      "deleteCommentFailed": "فشل حذف التعليق"
+    },
+    "success": {
+      "payment": "تم الدفع بنجاح! يمكنك الآن مشاهدة الفيلم.",
+      "commentAdded": "تمت إضافة التعليق بنجاح",
+      "commentDeleted": "تم حذف التعليق بنجاح"
+    },
+    "comments": {
+      "title": "التعليقات",
+      "placeholder": "أضف تعليقاً...",
+      "submit": "نشر التعليق",
+      "delete": "حذف",
+      "unknownUser": "مستخدم غير معروف"
+    },
+    "payment": {
+      "purchase": "شراء الفيلم",
+      "price": "السعر: ${{price}}",
+      "processing": "جاري معالجة الدفع..."
+    },
+    "filmInfo": {
+      "by": "بواسطة",
+      "views": "{{count}} مشاهدة",
+      "genre": "النوع",
+      "description": "الوصف"
+    }
+  },
+  "filmmakerDashboard": {
+    "title": "لوحة تحكم صانع الأفلام",
+    "uploadNewFilm": "رفع فيلم جديد",
+    "loading": "جاري التحميل...",
+    "noFilms": {
+      "title": "لا توجد أفلام",
+      "description": "ابدأ برفع فيلمك الأول."
+    },
+    "filmStatus": {
+      "approved": "تمت الموافقة",
+      "pending": "قيد المراجعة",
+      "rejected": "مرفوض"
+    },
+    "table": {
+      "title": "العنوان",
+      "status": "الحالة",
+      "views": "المشاهدات",
+      "revenue": "الإيرادات",
+      "uploadDate": "تاريخ الرفع",
+      "actions": "الإجراءات",
+      "watchFilm": "مشاهدة الفيلم",
+      "noFilms": "لا توجد أفلام {{status}}"
+    }
+  },
+  "joinCommunity": "انضم إلى مجتمع فيلميلا واكتشف أفلاماً مستقلة رائعة من جميع أنحاء العالم.",
+  "getStarted": "ابدأ الآن",
+  "featuredFilms": "أفلام مميزة",
+  "loading": "جاري التحميل..."
 } 

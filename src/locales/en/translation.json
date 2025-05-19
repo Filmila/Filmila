@@ -7,5 +7,98 @@
   "filmmakers": "Filmmakers",
   "ratings": "Ratings",
   "about": "About",
-  "contact": "Contact"
+  "contact": "Contact",
+  "minutes": "minutes",
+  "watchNow": "Watch Now",
+  "recentlyAdded": "Recently Added",
+  "topRated": "Top Rated",
+  "watch": "Watch",
+  "action": "Action",
+  "drama": "Drama",
+  "comedy": "Comedy",
+  "uploadFilm": {
+    "title": "Upload New Film",
+    "form": {
+      "title": "Title",
+      "description": "Description",
+      "genre": "Genre",
+      "price": "Price (USD)",
+      "videoFile": "Video File",
+      "thumbnailImage": "Thumbnail Image",
+      "submit": "Upload Film"
+    },
+    "errors": {
+      "videoRequired": "Please select a video file",
+      "thumbnailRequired": "Please select a thumbnail image",
+      "invalidVideo": "Please upload a valid video file",
+      "invalidThumbnail": "Please upload a valid image file for the thumbnail",
+      "videoSizeLimit": "File size should be less than 500MB",
+      "thumbnailSizeLimit": "Thumbnail size should be less than 5MB",
+      "uploadFailed": "Failed to upload film. Please check your network connection and try again."
+    },
+    "success": "Your film was successfully uploaded and is pending approval.",
+    "selectedFile": "Selected file: {{name}} ({{size}} MB)"
+  },
+  "watchFilm": {
+    "loading": "Loading film...",
+    "errors": {
+      "loadFailed": "Failed to load film",
+      "paymentFailed": "Failed to initiate payment",
+      "paymentVerificationFailed": "Failed to verify payment",
+      "loginRequired": "Please log in to purchase access",
+      "commentFailed": "Failed to add comment",
+      "deleteCommentFailed": "Failed to delete comment"
+    },
+    "success": {
+      "payment": "Payment successful! You now have access to the film.",
+      "commentAdded": "Comment added successfully",
+      "commentDeleted": "Comment deleted successfully"
+    },
+    "comments": {
+      "title": "Comments",
+      "placeholder": "Add a comment...",
+      "submit": "Post Comment",
+      "delete": "Delete",
+      "unknownUser": "Unknown"
+    },
+    "payment": {
+      "purchase": "Purchase Access",
+      "price": "Price: ${{price}}",
+      "processing": "Processing payment..."
+    },
+    "filmInfo": {
+      "by": "By",
+      "views": "{{count}} views",
+      "genre": "Genre",
+      "description": "Description"
+    }
+  },
+  "filmmakerDashboard": {
+    "title": "Filmmaker Dashboard",
+    "uploadNewFilm": "Upload New Film",
+    "loading": "Loading...",
+    "noFilms": {
+      "title": "No films",
+      "description": "Get started by uploading your first film."
+    },
+    "filmStatus": {
+      "approved": "Approved",
+      "pending": "Pending",
+      "rejected": "Rejected"
+    },
+    "table": {
+      "title": "Title",
+      "status": "Status",
+      "views": "Views",
+      "revenue": "Revenue",
+      "uploadDate": "Upload Date",
+      "actions": "Actions",
+      "watchFilm": "Watch Film",
+      "noFilms": "No {{status}} films"
+    }
+  },
+  "joinCommunity": "Join the Filmila community and discover amazing independent films from around the world.",
+  "getStarted": "Get Started",
+  "featuredFilms": "Featured Films",
+  "loading": "Loading..."
 } 
