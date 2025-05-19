@@ -5,6 +5,7 @@ import { supabase } from '../config/supabase';
 import { StarIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 
 const Home = () => {
   const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
@@ -74,7 +75,9 @@ const Home = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900 to-purple-600 opacity-90" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            <h1
+              className={`text-4xl md:text-5xl font-bold mb-6 ${i18n.language === 'ar' ? 'cairo-play-ar text-orange-500' : ''}`}
+            >
               {t('welcome')}
             </h1>
             <p className="text-xl mb-8 text-purple-100">

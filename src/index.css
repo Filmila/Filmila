@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo+Play:wght@800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -20,4 +21,9 @@
   .input-field {
     @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent;
   }
+}
+
+.cairo-play-ar {
+  font-family: 'Cairo Play', sans-serif;
+  font-weight: 800;
 } 
