@@ -57,8 +57,17 @@ const Home = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-1">{film.title}</h3>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
-            <StarIcon className="h-5 w-5 text-yellow-400" />
-            <span className="text-sm text-gray-600">N/A</span>
+            {film.average_rating && film.average_rating > 0 ? (
+              <>
+                <StarIcon className="h-5 w-5 text-purple-500" />
+                <span className="text-sm text-gray-800">{film.average_rating.toFixed(1)}</span>
+              </>
+            ) : (
+              <>
+                <StarIcon className="h-5 w-5 text-gray-400" />
+                <span className="text-sm text-gray-500">N/A</span>
+              </>
+            )}
           </div>
           <button className="text-purple-600 hover:text-purple-800">
             <BookmarkIcon className="h-5 w-5" />
