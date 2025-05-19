@@ -5,10 +5,12 @@ import { useAuth } from '../../context/AuthContext';
 import { uploadFileToS3 } from '../../services/s3Service';
 import { filmService } from '../../services/filmService';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const UploadFilm = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Partial<Film>>({
     title: '',
@@ -47,12 +49,12 @@ const UploadFilm = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('video/')) {
-        setError('Please upload a valid video file');
+        setError(t('uploadFilm.errors.invalidVideo'));
         return;
       }
       // Validate file size (e.g., 500MB limit)
       if (file.size > 500 * 1024 * 1024) {
-        setError('File size should be less than 500MB');
+        setError(t('uploadFilm.errors.videoSizeLimit'));
         return;
       }
       setSelectedFile(file);
@@ -65,12 +67,12 @@ const UploadFilm = () => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setError('Please upload a valid image file for the thumbnail');
+        setError(t('uploadFilm.errors.invalidThumbnail'));
         return;
       }
       // Validate file size (e.g., 5MB limit)
       if (file.size > 5 * 1024 * 1024) {
-        setError('Thumbnail size should be less than 5MB');
+        setError(t('uploadFilm.errors.thumbnailSizeLimit'));
         return;
       }
       setSelectedThumbnail(file);
@@ -81,11 +83,11 @@ const UploadFilm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      setError('Please select a video file');
+      setError(t('uploadFilm.errors.videoRequired'));
       return;
     }
     if (!selectedThumbnail) {
-      setError('Please select a thumbnail image');
+      setError(t('uploadFilm.errors.thumbnailRequired'));
       return;
     }
     setIsSubmitting(true);
@@ -120,14 +122,14 @@ const UploadFilm = () => {
         version: 1
       };
       await filmService.createFilm(newFilm);
-      toast.success('Your film was successfully uploaded and is pending approval.');
+      toast.success(t('uploadFilm.success'));
       navigate('/dashboard');
     } catch (err) {
       console.error('Upload error details:', err);
       if (err instanceof Error) {
         setError(`Upload failed: ${err.message}`);
       } else {
-        setError('Failed to upload film. Please check your network connection and try again.');
+        setError(t('uploadFilm.errors.uploadFailed'));
       }
     } finally {
       setIsSubmitting(false);
@@ -136,12 +138,12 @@ const UploadFilm = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Upload New Film</h1>
+      <h1 className="text-2xl font-bold mb-6">{t('uploadFilm.title')}</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-            Title
+            {t('uploadFilm.form.title')}
           </label>
           <input
             type="text"
@@ -156,7 +158,7 @@ const UploadFilm = () => {
 
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
+            {t('uploadFilm.form.description')}
           </label>
           <textarea
             id="description"
@@ -171,7 +173,7 @@ const UploadFilm = () => {
 
         <div>
           <label htmlFor="genre" className="block text-sm font-medium text-gray-700">
-            Genre
+            {t('uploadFilm.form.genre')}
           </label>
           <select
             id="genre"
@@ -183,7 +185,7 @@ const UploadFilm = () => {
           >
             {genres.map(genre => (
               <option key={genre} value={genre}>
-                {genre}
+                {t(genre.toLowerCase())}
               </option>
             ))}
           </select>
@@ -191,7 +193,7 @@ const UploadFilm = () => {
 
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-            Price (USD)
+            {t('uploadFilm.form.price')}
           </label>
           <input
             type="number"
@@ -208,7 +210,7 @@ const UploadFilm = () => {
 
         <div>
           <label htmlFor="video" className="block text-sm font-medium text-gray-700">
-            Video File
+            {t('uploadFilm.form.videoFile')}
           </label>
           <input
             type="file"
@@ -226,14 +228,17 @@ const UploadFilm = () => {
           />
           {selectedFile && (
             <p className="mt-2 text-sm text-gray-500">
-              Selected file: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)
+              {t('uploadFilm.selectedFile', {
+                name: selectedFile.name,
+                size: (selectedFile.size / (1024 * 1024)).toFixed(2)
+              })}
             </p>
           )}
         </div>
 
         <div>
           <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700">
-            Thumbnail Image
+            {t('uploadFilm.form.thumbnailImage')}
           </label>
           <input
             type="file"
@@ -250,26 +255,25 @@ const UploadFilm = () => {
           />
           {selectedThumbnail && (
             <p className="mt-2 text-sm text-gray-500">
-              Selected thumbnail: {selectedThumbnail.name} ({(selectedThumbnail.size / (1024 * 1024)).toFixed(2)} MB)
+              {t('uploadFilm.selectedFile', {
+                name: selectedThumbnail.name,
+                size: (selectedThumbnail.size / (1024 * 1024)).toFixed(2)
+              })}
             </p>
           )}
         </div>
 
         {error && (
-          <div className="text-red-600 text-sm">
-            {error}
-          </div>
+          <div className="text-red-600 text-sm">{error}</div>
         )}
 
-        <div>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {isSubmitting ? 'Uploading...' : 'Upload Film'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50"
+        >
+          {isSubmitting ? 'Uploading...' : t('uploadFilm.form.submit')}
+        </button>
       </form>
     </div>
   );

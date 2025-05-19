@@ -5,6 +5,7 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import { Navigation } from 'swiper/modules';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface Film {
   id: string;
@@ -26,6 +27,7 @@ const BrowseFilms = () => {
   const [genreSections, setGenreSections] = useState<Record<string, Film[]>>({});
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchFilms = async () => {
@@ -77,32 +79,33 @@ const BrowseFilms = () => {
             <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">{featured.title}</h1>
             <p className="text-lg text-gray-200 mb-4 line-clamp-3">{featured.description}</p>
             <div className="flex items-center gap-4 mb-4">
-              <span className="text-white font-semibold">{featured.duration} min</span>
+              <span className="text-white font-semibold">{featured.duration} {t('minutes')}</span>
               <span className="text-indigo-300 bg-indigo-900/60 px-2 py-1 rounded text-xs">{featured.genre}</span>
             </div>
             <button
               className="bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 shadow-lg"
               onClick={() => navigate(`/watch/${featured.id}`)}
             >
-              Watch Now
+              {t('watchNow')}
             </button>
           </div>
         </div>
       )}
 
       {/* Recently Added */}
-      <SectionCarousel title="Recently Added" films={recent} navigate={navigate} />
+      <SectionCarousel title={t('recentlyAdded')} films={recent} navigate={navigate} />
       {/* Top Rated */}
-      <SectionCarousel title="Top Rated" films={topRated} navigate={navigate} />
+      <SectionCarousel title={t('topRated')} films={topRated} navigate={navigate} />
       {/* Genre Sections */}
       {GENRES.map(genre => (
-        <SectionCarousel key={genre} title={genre} films={genreSections[genre] || []} navigate={navigate} />
+        <SectionCarousel key={genre} title={t(genre.toLowerCase())} films={genreSections[genre] || []} navigate={navigate} />
       ))}
     </div>
   );
 };
 
 function SectionCarousel({ title, films, navigate }: { title: string; films: Film[]; navigate: any }) {
+  const { t } = useTranslation();
   if (!films || films.length === 0) return null;
   return (
     <div className="mb-10 px-6">
@@ -131,7 +134,7 @@ function SectionCarousel({ title, films, navigate }: { title: string; films: Fil
                 <h3 className="font-semibold text-lg mb-1 line-clamp-1">{film.title}</h3>
                 <p className="text-gray-500 text-sm mb-2 line-clamp-2">{film.description}</p>
                 <div className="flex items-center gap-2 text-xs text-gray-400 mb-2">
-                  <span>{film.duration} min</span>
+                  <span>{film.duration} {t('minutes')}</span>
                   <span>•</span>
                   <span>{film.genre}</span>
                 </div>
@@ -139,7 +142,7 @@ function SectionCarousel({ title, films, navigate }: { title: string; films: Fil
                   className="mt-auto bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700"
                   onClick={() => navigate(`/watch/${film.id}`)}
                 >
-                  Watch
+                  {t('watch')}
                 </button>
               </div>
             </div>

@@ -6,6 +6,7 @@ import { paymentService } from '../services/paymentService';
 import { commentService, Comment } from '../services/commentService';
 import { stripePromise } from '../config/stripe';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 interface FilmWithFilmmaker extends Film {
   filmmaker_display_name?: string;
@@ -21,6 +22,7 @@ interface CommentWithProfile extends Comment {
 const WatchFilm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [film, setFilm] = useState<FilmWithFilmmaker | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,7 +133,7 @@ const WatchFilm = () => {
     if (!film || !id) return;
 
     if (!isAuthenticated) {
-      toast.error('Please log in to purchase access');
+      toast.error(t('watchFilm.errors.loginRequired'));
       navigate('/login', { state: { from: `/watch/${id}` } });
       return;
     }
@@ -154,7 +156,7 @@ const WatchFilm = () => {
       if (error) throw error;
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Failed to initiate payment');
+      toast.error(t('watchFilm.errors.paymentFailed'));
     }
   };
 
@@ -168,10 +170,10 @@ const WatchFilm = () => {
       const commentsWithNames = await fetchCommentsWithDisplayNames(id);
       setComments(commentsWithNames);
       setNewComment('');
-      toast.success('Comment added successfully');
+      toast.success(t('watchFilm.success.commentAdded'));
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      toast.error(t('watchFilm.errors.commentFailed'));
     } finally {
       setIsSubmittingComment(false);
     }
@@ -181,10 +183,10 @@ const WatchFilm = () => {
     try {
       await commentService.deleteComment(commentId);
       setComments(prev => prev.filter(c => c.id !== commentId));
-      toast.success('Comment deleted successfully');
+      toast.success(t('watchFilm.success.commentDeleted'));
     } catch (error) {
       console.error('Error deleting comment:', error);
-      toast.error('Failed to delete comment');
+      toast.error(t('watchFilm.errors.deleteCommentFailed'));
     }
   };
 
@@ -235,129 +237,112 @@ const WatchFilm = () => {
           const success = await paymentService.verifyPayment(sessionId);
           if (success) {
             setHasAccess(true);
-            toast.success('Payment successful! You now have access to the film.');
+            toast.success(t('watchFilm.success.payment'));
             // Remove session_id from URL
             window.history.replaceState({}, document.title, `/watch/${id}`);
           }
         } catch (error) {
           console.error('Payment verification error:', error);
-          toast.error('Failed to verify payment');
+          toast.error(t('watchFilm.errors.paymentVerificationFailed'));
         }
       };
 
       verifyPayment();
     }
-  }, [id]);
+  }, [id, t]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    return <div className="flex justify-center items-center min-h-screen">{t('watchFilm.loading')}</div>;
   }
 
   if (!film) {
-    return <div className="flex justify-center items-center min-h-screen">Film not found</div>;
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h1 className="text-2xl font-bold mb-4">{film.title}</h1>
-          <p className="text-gray-600 mb-4">{film.description}</p>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-lg font-semibold">Price: ${film.price.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">
-                Filmmaker: {profile?.display_name ? profile.display_name : film?.filmmaker}
-              </p>
-            </div>
-            <button
-              onClick={handlePayment}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {isAuthenticated ? 'Purchase Access' : 'Log in to Purchase'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">{film.title}</h1>
-      <div className="aspect-w-16 aspect-h-9 mb-4">
-        <video
-          ref={videoRef}
-          src={film.video_url}
-          controls
-          className="w-full h-full rounded-lg"
-          poster={film.thumbnail_url}
-          onPlay={() => trackView()}
-        />
-      </div>
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <p className="text-gray-600 mb-4">{film.description}</p>
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <p>Filmmaker: {profile?.display_name ? profile.display_name : film?.filmmaker}</p>
-          <p>Genre: {film.genre}</p>
-        </div>
-      </div>
-
-      {/* Comments Section */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Comments</h2>
-        
-        {/* Comment Form */}
-        {isAuthenticated && (
-          <form onSubmit={handleCommentSubmit} className="mb-6">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Write a comment..."
-              className="w-full p-2 border rounded-md mb-2"
-              rows={3}
-              maxLength={1000}
+    <div className="max-w-6xl mx-auto p-4">
+      <div className="aspect-video bg-black mb-4">
+        {hasAccess ? (
+          <video
+            ref={videoRef}
+            src={film.video_url}
+            controls
+            className="w-full h-full"
+            onPlay={trackView}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <img
+              src={film.thumbnail_url}
+              alt={film.title}
+              className="w-full h-full object-cover opacity-50"
             />
-            <button
-              type="submit"
-              disabled={isSubmittingComment || !newComment.trim()}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {isSubmittingComment ? 'Posting...' : 'Post Comment'}
-            </button>
-          </form>
+            <div className="absolute text-center">
+              <h2 className="text-2xl font-bold text-white mb-4">{film.title}</h2>
+              <p className="text-white mb-4">{t('watchFilm.payment.price', { price: film.price })}</p>
+              <button
+                onClick={handlePayment}
+                className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700"
+              >
+                {t('watchFilm.payment.purchase')}
+              </button>
+            </div>
+          </div>
         )}
+      </div>
 
-        {/* Comments List */}
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            comment ? (
-              <div key={comment.id} className="border-b pb-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-semibold text-indigo-700 mr-2">
-                      {comment.display_name}
-                    </span>
-                    <span className="text-gray-800">{comment.comment}</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
+          <h1 className="text-2xl font-bold mb-2">{film.title}</h1>
+          <div className="flex items-center gap-4 text-gray-600 mb-4">
+            <span>{t('watchFilm.filmInfo.by')} {profile?.display_name || film.filmmaker}</span>
+            <span>•</span>
+            <span>{t('watchFilm.filmInfo.views', { count: film.views || 0 })}</span>
+            <span>•</span>
+            <span>{t('watchFilm.filmInfo.genre')}: {t(film.genre.toLowerCase())}</span>
+          </div>
+          <p className="text-gray-700 mb-6">{film.description}</p>
+
+          <div className="mt-8">
+            <h2 className="text-xl font-bold mb-4">{t('watchFilm.comments.title')}</h2>
+            {isAuthenticated && (
+              <form onSubmit={handleCommentSubmit} className="mb-6">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder={t('watchFilm.comments.placeholder')}
+                  className="w-full p-2 border rounded-md mb-2"
+                  rows={3}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmittingComment}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {t('watchFilm.comments.submit')}
+                </button>
+              </form>
+            )}
+
+            <div className="space-y-4">
+              {comments.map((comment) => (
+                <div key={comment.id} className="bg-gray-50 p-4 rounded-md">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-semibold">{comment.display_name || t('watchFilm.comments.unknownUser')}</span>
+                    {currentUserId === comment.viewer_id && (
+                      <button
+                        onClick={() => handleDeleteComment(comment.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        {t('watchFilm.comments.delete')}
+                      </button>
+                    )}
                   </div>
-                  {isAuthenticated && comment.viewer_id === currentUserId && (
-                    <button
-                      onClick={() => handleDeleteComment(comment.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <p className="text-gray-700">{comment.comment}</p>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  {new Date(comment.created_at).toLocaleDateString()}
-                </p>
-              </div>
-            ) : null
-          ))}
-          {comments.length === 0 && (
-            <p className="text-gray-500 text-center">No comments yet. Be the first to comment!</p>
-          )}
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
