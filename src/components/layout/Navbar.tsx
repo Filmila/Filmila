@@ -24,6 +24,12 @@ const Navbar = () => {
     return `/${role}/dashboard`;
   };
 
+  const navLinkStyle = {
+    letterSpacing: '0.5px',
+    marginInline: '0.75rem',
+    lineHeight: 1.75
+  };
+
   return (
     <nav className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,19 +39,19 @@ const Navbar = () => {
               Filmila
             </Link>
             <div className="hidden md:flex ml-10 space-x-8">
-              <Link to="/browse" className="nav-link text-gray-600 hover:text-purple-600">
+              <Link to="/browse" className="text-gray-600 hover:text-purple-600" style={navLinkStyle}>
                 {t('browse_films')}
               </Link>
-              <Link to="/filmmakers" className="nav-link text-gray-600 hover:text-purple-600">
+              <Link to="/filmmakers" className="text-gray-600 hover:text-purple-600" style={navLinkStyle}>
                 {t('filmmakers')}
               </Link>
-              <Link to="/ratings" className="nav-link text-gray-600 hover:text-purple-600">
+              <Link to="/ratings" className="text-gray-600 hover:text-purple-600" style={navLinkStyle}>
                 {t('ratings')}
               </Link>
-              <Link to="/about" className="nav-link text-gray-600 hover:text-purple-600">
+              <Link to="/about" className="text-gray-600 hover:text-purple-600" style={navLinkStyle}>
                 {t('about')}
               </Link>
-              <Link to="/contact" className="nav-link text-gray-600 hover:text-purple-600">
+              <Link to="/contact" className="text-gray-600 hover:text-purple-600" style={navLinkStyle}>
                 {t('contact')}
               </Link>
             </div>
@@ -64,7 +70,8 @@ const Navbar = () => {
               <div className="flex items-center space-x-4">
                 <Link
                   to={getDashboardLink()}
-                  className="nav-link text-gray-600 hover:text-purple-600"
+                  className="text-gray-600 hover:text-purple-600"
+                  style={navLinkStyle}
                 >
                   Dashboard
                 </Link>
@@ -82,7 +89,8 @@ const Navbar = () => {
               <div className="space-x-4">
                 <Link
                   to="/login"
-                  className="nav-link text-gray-600 hover:text-purple-600"
+                  className="text-gray-600 hover:text-purple-600"
+                  style={navLinkStyle}
                 >
                   {t('login')}
                 </Link>
@@ -97,13 +105,6 @@ const Navbar = () => {
           </div>
         </div>
       </div>
-      <style jsx>{`
-        .nav-link {
-          letter-spacing: 0.5px;
-          margin-inline: 0.75rem;
-          line-height: 1.75;
-        }
-      `}</style>
     </nav>
   );
 };
