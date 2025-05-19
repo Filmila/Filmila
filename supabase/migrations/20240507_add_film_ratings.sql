@@ -1,7 +1,7 @@
 -- Create film_ratings table
 CREATE TABLE IF NOT EXISTS film_ratings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    film_id UUID NOT NULL REFERENCES films(id) ON DELETE CASCADE,
+    film_id BIGINT NOT NULL REFERENCES films(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
