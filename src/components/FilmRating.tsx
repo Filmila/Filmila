@@ -57,29 +57,32 @@ const FilmRating: React.FC<FilmRatingProps> = ({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <StarRating
-            rating={averageRating}
-            readonly
-            size="lg"
-          />
-          <span className="text-sm text-gray-500">
-            ({averageRating.toFixed(1)})
-          </span>
-        </div>
+      <div className="flex items-center gap-2">
+        <StarRating
+          rating={averageRating}
+          readonly
+          size="lg"
+        />
+      </div>
+      <div className="flex flex-col gap-1 mt-1">
         {isAuthenticated && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {userRating ? t('your_rating') : t('rate_this_film')}:
-            </span>
-            <StarRating
-              rating={userRating || 0}
-              onRatingChange={handleRatingChange}
-              size="md"
-            />
-          </div>
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                {t('your_rating')}: {userRating ? `${userRating}/5` : t('rate_this_film')}
+              </span>
+              <StarRating
+                rating={userRating || 0}
+                onRatingChange={userRating ? undefined : handleRatingChange}
+                readonly={!!userRating}
+                size="md"
+              />
+            </div>
+          </>
         )}
+        <span className="text-sm text-gray-500">
+          {t('average_rating')}: {averageRating.toFixed(1)}
+        </span>
       </div>
       {isLoading && (
         <div className="text-sm text-gray-500">
