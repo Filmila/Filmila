@@ -5,7 +5,6 @@ import { supabase } from '../config/supabase';
 import { StarIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 
 const Home = () => {
   const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
