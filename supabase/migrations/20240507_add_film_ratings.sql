@@ -1,3 +1,10 @@
+-- Drop existing trigger and function if they exist
+DROP TRIGGER IF EXISTS update_film_rating_trigger ON film_ratings;
+DROP FUNCTION IF EXISTS update_film_average_rating();
+
+-- Drop existing table if it exists
+DROP TABLE IF EXISTS film_ratings;
+
 -- Create film_ratings table
 CREATE TABLE IF NOT EXISTS film_ratings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -26,9 +33,18 @@ CREATE POLICY "Enable users to manage their own ratings"
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
--- Add average_rating column to films table
-ALTER TABLE films
-ADD COLUMN average_rating DECIMAL(3,2) DEFAULT 0;
+-- Add average_rating column to films table if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM information_schema.columns 
+        WHERE table_name = 'films' 
+        AND column_name = 'average_rating'
+    ) THEN
+        ALTER TABLE films ADD COLUMN average_rating DECIMAL(3,2) DEFAULT 0;
+    END IF;
+END $$;
 
 -- Create function to update average rating
 CREATE OR REPLACE FUNCTION update_film_average_rating()
