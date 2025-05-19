@@ -4,11 +4,13 @@ import { Film } from '../types';
 import { supabase } from '../config/supabase';
 import { StarIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
+import { useTranslation } from 'react-i18next';
 
 const Home = () => {
   const [featuredFilms, setFeaturedFilms] = useState<Film[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchFeaturedFilms = async () => {
@@ -73,17 +75,17 @@ const Home = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Discover, Watch, and Support Short Filmmakers
+              {t('welcome')}
             </h1>
             <p className="text-xl mb-8 text-purple-100">
-              Join our community of passionate filmmakers and film enthusiasts
+              {t('joinCommunity')}
             </p>
             <div className="flex justify-center">
               <button
                 onClick={() => navigate('/login')}
                 className="bg-white text-purple-600 px-8 py-3 rounded-full hover:bg-gray-100 transition-colors font-semibold text-lg shadow"
               >
-                Get Started
+                {t('getStarted')}
               </button>
             </div>
           </div>
