@@ -119,7 +119,8 @@ const UploadFilm = () => {
         video_url: videoUrl,
         thumbnail_url: thumbnailUrl,
         genre: formData.genre || 'Drama',
-        version: 1
+        version: 1,
+        average_rating: 0
       };
       await filmService.createFilm(newFilm);
       toast.success(t('uploadFilm.success'));

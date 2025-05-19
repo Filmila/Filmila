@@ -41,7 +41,8 @@ export const filmService = {
         thumbnail_url: film.thumbnail_url,
         genre: film.genre,
         last_action: film.last_action,
-        version: film.version
+        version: film.version,
+        average_rating: film.average_rating
       }])
       .select()
       .single();
