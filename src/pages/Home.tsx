@@ -85,7 +85,8 @@ const Home = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1
-              className={`text-4xl md:text-5xl font-bold mb-6 ${i18n.language === 'ar' ? 'cairo-play-ar text-orange-500' : ''}`}
+              className="text-4xl md:text-5xl font-bold mb-6"
+              style={{ fontFamily: 'Cairo Play, sans-serif', fontWeight: 900 }}
             >
               {t('welcome')}
             </h1>
