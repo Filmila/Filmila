@@ -7,6 +7,8 @@ import { commentService, Comment } from '../services/commentService';
 import { stripePromise } from '../config/stripe';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import FilmRating from '../components/FilmRating';
+import { useAuth } from '../context/AuthContext';
 
 interface FilmWithFilmmaker extends Film {
   filmmaker_display_name?: string;
@@ -34,6 +36,7 @@ const WatchFilm = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewTracked = useRef(false);
   const [profile, setProfile] = useState<{ display_name?: string } | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -301,6 +304,12 @@ const WatchFilm = () => {
             <span>•</span>
             <span>{t('watchFilm.filmInfo.genre')}: {t(film.genre.toLowerCase())}</span>
           </div>
+          {/* Film Rating Component */}
+          {user && user.profile?.role === 'VIEWER' && (
+            <div className="mb-4">
+              <FilmRating filmId={film.id} averageRating={film.average_rating || 0} />
+            </div>
+          )}
           <p className="text-gray-700 mb-6">{film.description}</p>
 
           <div className="mt-8">
