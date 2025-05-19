@@ -18,6 +18,7 @@ export interface Film {
     admin: string;
     date: string;
   };
+  average_rating: number;
 }
 
 export interface FilmProgress {
