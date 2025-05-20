@@ -199,8 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)
-        .abortSignal(controller.signal)
-        .single();
+        .maybeSingle();
 
       clearTimeout(timeoutId);
 
