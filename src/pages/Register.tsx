@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+// import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
@@ -16,7 +16,7 @@ interface FormData {
 
 const Register = () => {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  // const { signUp } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>('VIEWER');
   const [formData, setFormData] = useState<FormData>({
     email: '',
