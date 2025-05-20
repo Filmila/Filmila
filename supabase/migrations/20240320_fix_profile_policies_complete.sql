@@ -49,9 +49,22 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 -- Ensure the trigger for new user creation is working
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    user_role TEXT;
 BEGIN
+    -- Get the role from user metadata, default to 'VIEWER' if not set
+    user_role := COALESCE(
+        (new.raw_user_meta_data->>'role')::TEXT,
+        'VIEWER'
+    );
+    
+    -- Ensure the role is either 'FILMMAKER' or 'VIEWER'
+    IF user_role NOT IN ('FILMMAKER', 'VIEWER') THEN
+        user_role := 'VIEWER';
+    END IF;
+
     INSERT INTO public.profiles (id, email, role)
-    VALUES (new.id, new.email, 'VIEWER')
+    VALUES (new.id, new.email, user_role)
     ON CONFLICT (id) DO NOTHING;
     RETURN new;
 END;
