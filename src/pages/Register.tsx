@@ -98,8 +98,10 @@ const Register = () => {
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
 
+        console.log('Authenticated user ID:', userId);
+
         // Insert into profiles
-        const { error: profileError } = await supabase
+        const { data: profileInsertData, error: profileInsertError } = await supabase
           .from('profiles')
           .insert([
             {
@@ -110,9 +112,10 @@ const Register = () => {
             },
           ]);
 
-        if (profileError) {
-          console.error('Profile creation failed:', profileError);
-          setError('Profile creation failed: ' + profileError.message);
+        console.log('Profile insert result:', profileInsertData, profileInsertError);
+
+        if (profileInsertError) {
+          setError('Profile creation failed: ' + profileInsertError.message);
           setLoading(false);
           return;
         }
