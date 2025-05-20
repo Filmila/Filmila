@@ -94,11 +94,18 @@ const Register = () => {
           ]);
 
         if (profileError) {
-          throw profileError;
+          console.error('Profile creation failed:', profileError);
+          setError('Profile creation failed: ' + profileError.message);
+          setLoading(false);
+          return;
         }
 
         // Redirect based on role
-        navigate(selectedRole === 'FILMMAKER' ? '/filmmaker/dashboard' : '/viewer/dashboard');
+        if (selectedRole === 'FILMMAKER') {
+          navigate('/filmmaker/dashboard');
+        } else {
+          navigate('/viewer/dashboard');
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during registration');
