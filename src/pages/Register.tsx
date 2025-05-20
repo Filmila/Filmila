@@ -75,38 +75,40 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const { data, error: signUpError } = await signUp(formData.email, formData.password, selectedRole);
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
 
-      if (signUpError) {
-        throw signUpError;
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
       }
 
       if (data?.user) {
-        // Get the authenticated user from Supabase
+        // Get the authenticated user
         const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
         if (authUserError || !authUserData?.user) {
           setError('Could not get authenticated user after sign up.');
           setLoading(false);
           return;
         }
+
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
 
-        // Create user profile in Supabase
-        const { data: profileData, error: profileError } = await supabase
+        // Insert into profiles
+        const { error: profileError } = await supabase
           .from('profiles')
           .insert([
             {
               id: userId,
               email: userEmail,
-              role: selectedRole,
-              display_name: formData.displayName || null,
-              portfolio_link: selectedRole === 'FILMMAKER' ? formData.portfolioLink : null,
-              film_genre: selectedRole === 'FILMMAKER' ? formData.filmGenre : null,
+              role: selectedRole, // FILMMAKER or VIEWER
               created_at: new Date().toISOString(),
             },
           ]);
-        console.log('Profile insert result:', profileData, profileError);
 
         if (profileError) {
           console.error('Profile creation failed:', profileError);
@@ -115,7 +117,7 @@ const Register = () => {
           return;
         }
 
-        // Redirect based on role
+        // Redirect after successful registration
         if (selectedRole === 'FILMMAKER') {
           navigate('/filmmaker/dashboard');
         } else {
