@@ -87,7 +87,9 @@ const Register = () => {
       }
 
       if (data?.user) {
-        // Get the authenticated user
+        // Wait for the session to be fully established
+        await new Promise(res => setTimeout(res, 500));
+
         const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
         if (authUserError || !authUserData?.user) {
           setError('Could not get authenticated user after sign up.');
@@ -97,6 +99,9 @@ const Register = () => {
 
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
+
+        console.log('User ID for profile insert:', userId);
+        console.log('Session:', authUserData);
 
         // Insert into profiles
         const { error: insertError } = await supabase.from('profiles').insert([
