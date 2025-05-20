@@ -98,26 +98,23 @@ const Register = () => {
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
 
-        console.log('Authenticated user ID:', userId);
-
         // Insert into profiles
-        const { data: profileInsertData, error: profileInsertError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: userId,
-              email: userEmail,
-              role: selectedRole, // FILMMAKER or VIEWER
-              created_at: new Date().toISOString(),
-            },
-          ]);
+        const { error: insertError } = await supabase.from('profiles').insert([
+          {
+            id: userId, // must match auth uid
+            email: userEmail, // optional
+            role: selectedRole, // FILMMAKER or VIEWER
+            created_at: new Date().toISOString(),
+          },
+        ]);
 
-        console.log('Profile insert result:', profileInsertData, profileInsertError);
-
-        if (profileInsertError) {
-          setError('Profile creation failed: ' + profileInsertError.message);
+        if (insertError) {
+          console.error('Failed to insert profile:', insertError);
+          setError('Profile creation failed: ' + insertError.message);
           setLoading(false);
           return;
+        } else {
+          console.log('Profile created successfully.');
         }
 
         // Redirect after successful registration
