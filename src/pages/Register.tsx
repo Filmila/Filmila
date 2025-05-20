@@ -87,9 +87,6 @@ const Register = () => {
       }
 
       if (data?.user) {
-        // Wait for the session to be fully established
-        await new Promise(res => setTimeout(res, 500));
-
         const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
         if (authUserError || !authUserData?.user) {
           setError('Could not get authenticated user after sign up.');
@@ -100,25 +97,24 @@ const Register = () => {
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
 
-        console.log('Preparing to insert profile:', { userId, userEmail, selectedRole, time: new Date().toISOString() });
+        console.log('Preparing to insert profile:', { userId, userEmail, selectedRole });
 
-        // Insert into profiles
-        const { error: insertError, data: insertData } = await supabase.from('profiles').insert([
+        const { error: insertError } = await supabase.from('profiles').insert([
           {
-            id: userId, // must match auth uid
-            email: userEmail, // optional
+            id: userId,
+            email: userEmail,
             role: selectedRole, // FILMMAKER or VIEWER
             created_at: new Date().toISOString(),
           },
         ]);
 
         if (insertError) {
-          console.error('Failed to insert profile:', insertError, { userId, userEmail, selectedRole, time: new Date().toISOString() });
+          console.error('Failed to insert profile:', insertError);
           setError('Profile creation failed: ' + insertError.message);
           setLoading(false);
           return;
         } else {
-          console.log('Profile created successfully.', insertData, { userId, userEmail, selectedRole, time: new Date().toISOString() });
+          console.log('Profile created successfully.');
         }
 
         // Redirect after successful registration
