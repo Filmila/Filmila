@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../config/supabase';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
 
@@ -79,6 +80,23 @@ const Register = () => {
       }
 
       if (data?.user) {
+        // Create user profile in Supabase
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email: formData.email,
+              role: selectedRole,
+              portfolio_link: selectedRole === 'FILMMAKER' ? formData.portfolioLink : null,
+              film_genre: selectedRole === 'FILMMAKER' ? formData.filmGenre : null,
+            },
+          ]);
+
+        if (profileError) {
+          throw profileError;
+        }
+
         // Redirect based on role
         navigate(selectedRole === 'FILMMAKER' ? '/filmmaker/dashboard' : '/viewer/dashboard');
       }

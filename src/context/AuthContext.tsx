@@ -74,21 +74,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const profileData = await fetchProfileWithTimeout(authUser);
 
       if (!profileData) {
-        console.log('No profile found, creating default profile in background');
-        const defaultProfile = await createDefaultProfile(authUser, 'VIEWER');
-        if (defaultProfile) {
-          setUser(current => current ? { ...current, profile: defaultProfile, isProfileLoading: false } : null);
-          return;
-        }
+        console.log('No profile found for user:', authUser.email);
+        setUser(current => current ? { ...current, isProfileLoading: false } : null);
+        return;
       } else {
         console.log('Profile fetched successfully:', profileData);
         setUser(current => current ? { ...current, profile: profileData, isProfileLoading: false } : null);
         return;
       }
 
-      // If we get here, no profile was created or fetched
-      setUser(current => current ? { ...current, isProfileLoading: false } : null);
-      
     } catch (error) {
       console.error('Background profile fetch failed:', error);
       setUser(current => current ? { ...current, isProfileLoading: false } : null);
