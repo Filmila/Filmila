@@ -100,11 +100,10 @@ const Register = () => {
         const userId = authUserData.user.id;
         const userEmail = authUserData.user.email;
 
-        console.log('User ID for profile insert:', userId);
-        console.log('Session:', authUserData);
+        console.log('Preparing to insert profile:', { userId, userEmail, selectedRole, time: new Date().toISOString() });
 
         // Insert into profiles
-        const { error: insertError } = await supabase.from('profiles').insert([
+        const { error: insertError, data: insertData } = await supabase.from('profiles').insert([
           {
             id: userId, // must match auth uid
             email: userEmail, // optional
@@ -114,12 +113,12 @@ const Register = () => {
         ]);
 
         if (insertError) {
-          console.error('Failed to insert profile:', insertError);
+          console.error('Failed to insert profile:', insertError, { userId, userEmail, selectedRole, time: new Date().toISOString() });
           setError('Profile creation failed: ' + insertError.message);
           setLoading(false);
           return;
         } else {
-          console.log('Profile created successfully.');
+          console.log('Profile created successfully.', insertData, { userId, userEmail, selectedRole, time: new Date().toISOString() });
         }
 
         // Redirect after successful registration
