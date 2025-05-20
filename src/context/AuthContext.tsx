@@ -17,7 +17,7 @@ interface CustomUser extends User {
 
 interface AuthContextType {
   user: CustomUser | null;
-  signUp: (email: string, password: string) => Promise<{
+  signUp: (email: string, password: string, role: 'VIEWER' | 'FILMMAKER') => Promise<{
     data: { user: CustomUser } | null;
     error: Error | null;
   }>;
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!profileData) {
         console.log('No profile found, creating default profile in background');
-        const defaultProfile = await createDefaultProfile(authUser);
+        const defaultProfile = await createDefaultProfile(authUser, 'VIEWER');
         if (defaultProfile) {
           setUser(current => current ? { ...current, profile: defaultProfile, isProfileLoading: false } : null);
           return;
@@ -169,12 +169,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const createDefaultProfile = async (authUser: User): Promise<Profile | null> => {
+  const createDefaultProfile = async (authUser: User, role: 'VIEWER' | 'FILMMAKER'): Promise<Profile | null> => {
     try {
       const defaultProfile = {
         id: authUser.id,
         email: authUser.email!,
-        role: 'VIEWER',
+        role,
         created_at: new Date().toISOString(),
       };
 
@@ -261,7 +261,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, role: 'VIEWER' | 'FILMMAKER') => {
     try {
       console.log('Starting sign up process for:', email);
       setLoading(true);
@@ -271,9 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            role: 'VIEWER'
-          }
+          data: { role }
         }
       });
       
@@ -289,6 +287,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('Sign up successful, setting initial user state');
       const userWithoutProfile = setUserWithoutProfile(data.user);
+      await createDefaultProfile(data.user, role);
       startProfileFetch(data.user);
       return { data: { user: userWithoutProfile! }, error: null };
       

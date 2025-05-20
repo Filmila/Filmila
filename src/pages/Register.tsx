@@ -73,7 +73,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const { data, error: signUpError } = await signUp(formData.email, formData.password);
+      const { data, error: signUpError } = await signUp(formData.email, formData.password, selectedRole);
 
       if (signUpError) {
         throw signUpError;
