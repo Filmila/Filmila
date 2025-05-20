@@ -78,6 +78,11 @@ const Register = () => {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          data: {
+            role: selectedRole
+          }
+        }
       });
 
       if (error) {
