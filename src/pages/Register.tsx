@@ -1,7 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../config/supabase';
 
 type UserRole = 'FILMMAKER' | 'VIEWER';
 
