@@ -11,6 +11,7 @@ interface FormData {
   confirmPassword: string;
   portfolioLink?: string;
   filmGenre?: string;
+  displayName?: string;
 }
 
 const Register = () => {
@@ -23,6 +24,7 @@ const Register = () => {
     confirmPassword: '',
     portfolioLink: '',
     filmGenre: '',
+    displayName: '',
   });
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -80,18 +82,31 @@ const Register = () => {
       }
 
       if (data?.user) {
+        // Get the authenticated user from Supabase
+        const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
+        if (authUserError || !authUserData?.user) {
+          setError('Could not get authenticated user after sign up.');
+          setLoading(false);
+          return;
+        }
+        const userId = authUserData.user.id;
+        const userEmail = authUserData.user.email;
+
         // Create user profile in Supabase
-        const { error: profileError } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .insert([
             {
-              id: data.user.id,
-              email: formData.email,
+              id: userId,
+              email: userEmail,
               role: selectedRole,
+              display_name: formData.displayName || null,
               portfolio_link: selectedRole === 'FILMMAKER' ? formData.portfolioLink : null,
               film_genre: selectedRole === 'FILMMAKER' ? formData.filmGenre : null,
+              created_at: new Date().toISOString(),
             },
           ]);
+        console.log('Profile insert result:', profileData, profileError);
 
         if (profileError) {
           console.error('Profile creation failed:', profileError);
