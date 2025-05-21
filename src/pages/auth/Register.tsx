@@ -42,20 +42,6 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
         throw new Error('Registration failed - no user returned');
       }
 
-      // Insert the profile with the selected role
-      const { error: insertError } = await supabase.from('profiles').insert([
-        {
-          id: authData.user.id,
-          email: formData.email,
-          role: formData.role, // FILMMAKER or VIEWER
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
-
       console.log('User registered successfully:', authData.user.email);
 
       // Wait briefly for the database trigger to create the profile
@@ -230,4 +216,4 @@ export default function Register({ defaultRole = 'VIEWER' }: RegisterProps) {
       </div>
     </div>
   );
-}
+} 
