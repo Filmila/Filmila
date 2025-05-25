@@ -3,8 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import RoleSelection from './pages/auth/RoleSelection';
+import RegisterFlow from './pages/RegisterFlow';
 import TestConnection from './pages/TestConnection';
 import FilmmakerDashboard from './pages/filmmaker/FilmmakerDashboard';
 import UploadFilm from './pages/filmmaker/UploadFilm';
@@ -41,9 +40,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<RoleSelection />} />
-          <Route path="/register/filmmaker" element={<Register defaultRole="FILMMAKER" />} />
-          <Route path="/register/viewer" element={<Register defaultRole="VIEWER" />} />
+          <Route path="/register" element={<RegisterFlow />} />
           <Route path="/test-connection" element={<TestConnection />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />

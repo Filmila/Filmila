@@ -1,3 +1,4 @@
+// This file is now RegistrationForm. Use RegisterFlow.tsx for the registration route.
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 // import { useAuth } from '../context/AuthContext';
@@ -14,10 +15,13 @@ interface FormData {
   displayName?: string;
 }
 
-const Register = () => {
+interface RegistrationFormProps {
+  selectedRole: UserRole;
+}
+
+const RegistrationForm = ({ selectedRole }: RegistrationFormProps) => {
   const navigate = useNavigate();
   // const { signUp } = useAuth();
-  const [selectedRole, setSelectedRole] = useState<UserRole>('VIEWER');
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -29,10 +33,6 @@ const Register = () => {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
-  const handleRoleSelect = (role: UserRole) => {
-    setSelectedRole(role);
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -43,75 +43,55 @@ const Register = () => {
       setError('All fields are required');
       return false;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
-
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters');
       return false;
     }
-
     if (selectedRole === 'FILMMAKER') {
       if (!formData.portfolioLink || !formData.filmGenre) {
         setError('Portfolio link and film genre are required for filmmakers');
         return false;
       }
     }
-
     return true;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: {
-          data: {
-            role: selectedRole
-          }
-        }
+        options: { data: { role: selectedRole } }
       });
-
       if (error) {
         setError(error.message);
         setLoading(false);
         return;
       }
-
       if (data?.user) {
         const userId = data.user.id;
         const userEmail = data.user.email;
-
-        // Insert the profile with the selected role
         const { error: insertError } = await supabase.from('profiles').insert([
           {
             id: userId,
             email: userEmail,
-            role: selectedRole, // Use the selectedRole from state
+            role: selectedRole,
             created_at: new Date().toISOString(),
           },
         ]);
-
         if (insertError) {
           setError('Profile creation failed: ' + insertError.message);
           setLoading(false);
           return;
         }
-
-        // Redirect after successful registration
         if (selectedRole === 'FILMMAKER') {
           navigate('/filmmaker/dashboard');
         } else {
@@ -132,44 +112,14 @@ const Register = () => {
           Create your account
         </h2>
       </div>
-
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div className="mb-6">
-            <div className="text-center mb-4">Select your role:</div>
-            <div className="flex justify-center space-x-4">
-              <button
-                type="button"
-                onClick={() => handleRoleSelect('VIEWER')}
-                className={`px-4 py-2 rounded-md ${
-                  selectedRole === 'VIEWER'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Viewer
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleSelect('FILMMAKER')}
-                className={`px-4 py-2 rounded-md ${
-                  selectedRole === 'FILMMAKER'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Filmmaker
-              </button>
-            </div>
-          </div>
-
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
                 {error}
               </div>
             )}
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email address
@@ -187,7 +137,6 @@ const Register = () => {
                 />
               </div>
             </div>
-
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
@@ -205,7 +154,6 @@ const Register = () => {
                 />
               </div>
             </div>
-
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Confirm Password
@@ -223,7 +171,6 @@ const Register = () => {
                 />
               </div>
             </div>
-
             {selectedRole === 'FILMMAKER' && (
               <>
                 <div>
@@ -241,7 +188,6 @@ const Register = () => {
                     />
                   </div>
                 </div>
-
                 <div>
                   <label htmlFor="filmGenre" className="block text-sm font-medium text-gray-700">
                     Primary Film Genre
@@ -259,7 +205,6 @@ const Register = () => {
                 </div>
               </>
             )}
-
             <div>
               <button
                 type="submit"
@@ -278,4 +223,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default RegistrationForm; 
