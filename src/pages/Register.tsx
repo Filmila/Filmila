@@ -51,12 +51,6 @@ const RegistrationForm = ({ selectedRole }: RegistrationFormProps) => {
       setError('Password must be at least 6 characters');
       return false;
     }
-    if (selectedRole === 'FILMMAKER') {
-      if (!formData.portfolioLink || !formData.filmGenre) {
-        setError('Portfolio link and film genre are required for filmmakers');
-        return false;
-      }
-    }
     return true;
   };
 
