@@ -57,12 +57,10 @@ BEGIN
         (new.raw_user_meta_data->>'role')::TEXT,
         'VIEWER'
     );
-    
     -- Ensure the role is either 'FILMMAKER' or 'VIEWER'
     IF user_role NOT IN ('FILMMAKER', 'VIEWER') THEN
         user_role := 'VIEWER';
     END IF;
-
     INSERT INTO public.profiles (id, email, role)
     VALUES (new.id, new.email, user_role)
     ON CONFLICT (id) DO NOTHING;
