@@ -99,27 +99,25 @@ const Register = () => {
           return;
         }
 
-        const userId = authUserData.user.id;
-        const userEmail = authUserData.user.email;
+        // Wait briefly for the trigger to create the profile
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        console.log('Preparing to insert profile:', { userId, userEmail, selectedRole });
+        // Verify profile was created
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUserData.user.id)
+          .single();
 
-        const { error: insertError } = await supabase.from('profiles').insert([
-          {
-            id: userId,
-            email: userEmail,
-            role: selectedRole, // FILMMAKER or VIEWER
-            created_at: new Date().toISOString(),
-          },
-        ]);
+        if (profileError) {
+          console.error('Error verifying profile:', profileError.message);
+          // Don't throw here - the trigger might still be processing
+        }
 
-        if (insertError) {
-          console.error('Failed to insert profile:', insertError);
-          setError('Profile creation failed: ' + insertError.message);
-          setLoading(false);
-          return;
+        if (!profileData) {
+          console.log('Profile not found after registration - trigger may still be processing');
         } else {
-          console.log('Profile created successfully.');
+          console.log('Profile created successfully:', profileData);
         }
 
         // Redirect after successful registration
