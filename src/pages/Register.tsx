@@ -92,32 +92,23 @@ const Register = () => {
       }
 
       if (data?.user) {
-        const { data: authUserData, error: authUserError } = await supabase.auth.getUser();
-        if (authUserError || !authUserData?.user) {
-          setError('Could not get authenticated user after sign up.');
+        const userId = data.user.id;
+        const userEmail = data.user.email;
+
+        // Insert the profile with the selected role
+        const { error: insertError } = await supabase.from('profiles').insert([
+          {
+            id: userId,
+            email: userEmail,
+            role: selectedRole, // Use the selectedRole from state
+            created_at: new Date().toISOString(),
+          },
+        ]);
+
+        if (insertError) {
+          setError('Profile creation failed: ' + insertError.message);
           setLoading(false);
           return;
-        }
-
-        // Wait briefly for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Verify profile was created
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUserData.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Error verifying profile:', profileError.message);
-          // Don't throw here - the trigger might still be processing
-        }
-
-        if (!profileData) {
-          console.log('Profile not found after registration - trigger may still be processing');
-        } else {
-          console.log('Profile created successfully:', profileData);
         }
 
         // Redirect after successful registration
