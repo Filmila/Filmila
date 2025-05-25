@@ -71,21 +71,7 @@ const RegistrationForm = ({ selectedRole }: RegistrationFormProps) => {
         return;
       }
       if (data?.user) {
-        const userId = data.user.id;
-        const userEmail = data.user.email;
-        const { error: insertError } = await supabase.from('profiles').insert([
-          {
-            id: userId,
-            email: userEmail,
-            role: selectedRole,
-            created_at: new Date().toISOString(),
-          },
-        ]);
-        if (insertError) {
-          setError('Profile creation failed: ' + insertError.message);
-          setLoading(false);
-          return;
-        }
+        // Profile will be created by trigger using selectedRole from metadata
         if (selectedRole === 'FILMMAKER') {
           navigate('/filmmaker/dashboard');
         } else {
